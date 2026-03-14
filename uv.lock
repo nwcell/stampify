@@ -21,7 +21,7 @@ wheels = [
 [[package]]
 name = "ink-print"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "manifold3d" },
     { name = "numpy" },

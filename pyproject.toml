@@ -1,0 +1,10 @@
+[project]
+name = "ink-print"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2,<3",
+  "pillow>=10,<12",
+  "scikit-image>=0.24,<1",
+  "trimesh>=4,<5",
+]

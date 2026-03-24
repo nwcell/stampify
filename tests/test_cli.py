@@ -10,6 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = ROOT / "sample" / "xmas-cowboy.jpeg"
 
 
+def test_package_import_is_lazy() -> None:
+    result = subprocess.run(
+        [sys.executable, "-c", "import sys, ink_print; print('ink_print.core' in sys.modules)"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "False"
+
+
 def test_console_scripts_include_stampify() -> None:
     entry_points = {entry_point.name: entry_point.value for entry_point in metadata.entry_points(group="console_scripts")}
     assert entry_points["stampify"] == "ink_print.cli:main"

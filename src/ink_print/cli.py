@@ -3,11 +3,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from PIL import UnidentifiedImageError
-
-from .core import StampOptions, write_stamp
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Turn a black-and-white image into an STL stamp plate.",
@@ -37,6 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def namespace_to_options(args: argparse.Namespace) -> StampOptions:
+    from .core import StampOptions
+
     return StampOptions(
         mode=args.mode,
         size=args.size,
@@ -57,6 +54,8 @@ def namespace_to_options(args: argparse.Namespace) -> StampOptions:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    from PIL import UnidentifiedImageError
+    from .core import write_stamp
     try:
         output, mesh = write_stamp(args.image, args.output, namespace_to_options(args))
     except (FileNotFoundError, UnidentifiedImageError, OSError, ValueError) as exc:

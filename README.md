@@ -2,6 +2,20 @@
 
 Turn black-and-white artwork into stamp-ready STL models.
 
+## Install
+
+Install from a checkout:
+
+```bash
+uv tool install .
+```
+
+Run without installing:
+
+```bash
+uvx --from . ink-stamp sample/xmas-cowboy.jpeg
+```
+
 ## Standalone CLI
 
 Run it directly from the repo:
@@ -40,6 +54,12 @@ Add the local package:
 uv add /Users/travis/Projects/ink-print
 ```
 
+Once you publish to PyPI, the same package can be added with:
+
+```bash
+uv add ink-print
+```
+
 Use it from Python:
 
 ```python
@@ -56,3 +76,12 @@ print(output_path, mesh.extents)
 - `voxel` mode is still available as a fallback.
 - `--resolution 0` keeps the source image resolution.
 - `--simplify` and `--min-area` are the main cleanup controls for traced artwork.
+
+## Release automation
+
+This repo includes:
+
+- `.github/workflows/ci.yml` for tests and build validation on pushes and pull requests.
+- `.github/workflows/release.yml` for publishing to PyPI from a GitHub Release via Trusted Publishing.
+
+See `RELEASING.md` for the setup steps you still need to complete in GitHub and PyPI.

@@ -8,6 +8,17 @@ version = "0.1.0"
 description = "Turn black-and-white artwork into stamp-ready STL models."
 readme = "README.md"
 requires-python = ">=3.11"
+keywords = ["cli", "ink", "stamp", "stl", "3d-printing"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
 dependencies = [
   "manifold3d>=3,<4",
   "numpy>=2,<3",
@@ -21,5 +32,20 @@ dependencies = [
 [project.scripts]
 ink-stamp = "ink_print.cli:main"
 
+[project.optional-dependencies]
+test = [
+  "pytest>=8,<9",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/ink_print"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/README.md",
+  "/image_to_stamp.py",
+  "/pyproject.toml",
+  "/sample",
+  "/src/ink_print",
+  "/tests",
+]

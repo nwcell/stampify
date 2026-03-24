@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from PIL import UnidentifiedImageError
+
 from .core import StampOptions, write_stamp
 
 
@@ -53,7 +55,11 @@ def namespace_to_options(args: argparse.Namespace) -> StampOptions:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    output, mesh = write_stamp(args.image, args.output, namespace_to_options(args))
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        output, mesh = write_stamp(args.image, args.output, namespace_to_options(args))
+    except (FileNotFoundError, UnidentifiedImageError, OSError, ValueError) as exc:
+        parser.exit(2, f"error: {exc}\n")
     print(f"Wrote {output} at {mesh.extents[0]:.1f} x {mesh.extents[1]:.1f} x {mesh.extents[2]:.1f} mm")
     return 0

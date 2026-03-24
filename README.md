@@ -52,6 +52,21 @@ Show all options:
 uvx stampify --help
 ```
 
+## Web app
+
+Launch the browser app from the repo root with one line:
+
+```bash
+uv run --extra web python -m ink_print.webapp
+```
+
+The web app guides you through:
+
+- Upload artwork.
+- Review and approve the generated SVG/vector preview.
+- Generate the 3D STL.
+- Inspect the result in an interactive 3D viewer, then download it.
+
 ## Python API
 
 Use it from Python:

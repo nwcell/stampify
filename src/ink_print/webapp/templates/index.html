@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stampify Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.1.1/dist/css/tabler.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/tabler-icons.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --studio-bg: #0b1020;
+        --studio-panel: rgba(18, 26, 44, 0.88);
+        --studio-border: rgba(255, 255, 255, 0.08);
+        --studio-accent: #7c3aed;
+        --studio-accent-2: #06b6d4;
+      }
+
+      body {
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(124, 58, 237, 0.2), transparent 28%),
+          radial-gradient(circle at top right, rgba(6, 182, 212, 0.16), transparent 25%),
+          linear-gradient(180deg, #07101f 0%, #0a1020 36%, #060912 100%);
+      }
+
+      .studio-shell {
+        min-height: 100vh;
+      }
+
+      .studio-hero {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--studio-border);
+        background: linear-gradient(145deg, rgba(20, 29, 51, 0.92), rgba(13, 19, 35, 0.9));
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      }
+
+      .studio-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto -20% -50% auto;
+        width: 28rem;
+        height: 28rem;
+        background: radial-gradient(circle, rgba(124, 58, 237, 0.22), transparent 68%);
+        pointer-events: none;
+      }
+
+      .studio-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.9rem;
+      }
+
+      .studio-title {
+        letter-spacing: -0.05em;
+        line-height: 0.95;
+      }
+
+      .studio-muted {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .studio-card {
+        background: var(--studio-panel);
+        border: 1px solid var(--studio-border);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+      }
+
+      .studio-step {
+        min-height: 100%;
+      }
+
+      .studio-step-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .studio-grid-preview {
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size: 24px 24px;
+      }
+
+      .studio-preview-frame {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(5, 10, 20, 0.84);
+        border-radius: 1rem;
+        overflow: hidden;
+      }
+
+      .studio-svg-preview {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .studio-viewer {
+        width: 100%;
+        height: 24rem;
+        border-radius: 1rem;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.14), transparent 48%), #07101f;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .studio-viewer canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .studio-checklist {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .studio-check-item {
+        display: flex;
+        align-items: start;
+        gap: 0.7rem;
+        padding: 0.75rem 0.85rem;
+        border-radius: 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .studio-icon-chip {
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.7rem;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(145deg, rgba(124, 58, 237, 0.95), rgba(6, 182, 212, 0.9));
+        color: white;
+        flex: none;
+      }
+
+      .studio-kpi {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 0.9rem;
+        padding: 0.9rem 1rem;
+      }
+
+      .btn-studio {
+        background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+        border: 0;
+        box-shadow: 0 14px 28px rgba(6, 182, 212, 0.22);
+      }
+
+      .btn-studio:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 34px rgba(6, 182, 212, 0.28);
+      }
+
+      .btn-soft {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: white;
+      }
+
+      .btn-soft:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .form-control,
+      .form-select {
+        background-color: rgba(255, 255, 255, 0.04) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        color: rgba(255, 255, 255, 0.92) !important;
+      }
+
+      .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.38);
+      }
+
+      .text-muted-studio {
+        color: rgba(255, 255, 255, 0.68) !important;
+      }
+
+      .card-title {
+        letter-spacing: -0.03em;
+      }
+
+      .preview-badges .badge {
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .form-range::-webkit-slider-thumb {
+        background: #22d3ee;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page studio-shell">
+      <div class="container-xl py-4 py-lg-5">
+        <div class="row g-4">
+          <div class="col-12">
+            <div class="card studio-card studio-hero">
+              <div class="card-body p-4 p-lg-5 position-relative">
+                <div class="d-flex flex-wrap justify-content-between gap-3 align-items-start">
+                  <div class="me-lg-5" style="max-width: 56rem;">
+                    <div class="studio-badge mb-3">
+                      <i class="ti ti-sparkles"></i>
+                      Guided vector approval and 3D review
+                    </div>
+                    <h1 class="display-5 fw-bolder studio-title mb-3">Stampify Studio</h1>
+                    <p class="lead studio-muted mb-0">
+                      Upload artwork, review the traced vector, approve it, and then generate an STL with an interactive 3D preview.
+                      Built with FastAPI, HTMX, and Tabler CSS for a polished experience.
+                    </p>
+                  </div>
+                  <div class="d-flex flex-column gap-2">
+                    <div class="studio-badge"><i class="ti ti-bolt"></i> FastAPI + HTMX</div>
+                    <div class="studio-badge"><i class="ti ti-palette"></i> Tabler CSS</div>
+                    <div class="studio-badge"><i class="ti ti-cube"></i> Three.js viewer</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {% if error %}
+          <div class="col-12">
+            <div class="alert alert-danger alert-dismissible" role="alert">
+              <div class="d-flex align-items-center">
+                <span class="avatar avatar-sm me-3 bg-danger text-white"><i class="ti ti-alert-triangle"></i></span>
+                <div>
+                  <div class="fw-bold">Something needs attention</div>
+                  <div>{{ error }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <div id="workflow" class="col-12">
+            {% if session is none %}
+            <div class="row g-4">
+              <div class="col-12 col-lg-7">
+                <div class="card studio-card studio-step">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-upload me-2"></i>Upload your artwork</div>
+                      <div class="text-muted-studio">Pick a high-contrast image to trace into a stamp preview.</div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" class="vstack gap-4">
+                      <div>
+                        <label class="form-label fw-semibold">Artwork file</label>
+                        <input class="form-control form-control-lg" type="file" name="artwork" accept="image/*" required />
+                        <div class="form-hint text-muted-studio mt-2">Best results usually come from black-and-white logos, artwork, and silhouettes.</div>
+                      </div>
+
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <label class="form-label">Mode</label>
+                          <select class="form-select" name="mode">
+                            <option value="vector" selected>Vector preview</option>
+                            <option value="voxel">Voxel fallback</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label">Stamp size</label>
+                          <input class="form-control" type="number" name="size" value="80" step="0.1" min="10" />
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label">Border</label>
+                          <input class="form-control" type="number" name="border" value="2" step="0.1" min="0" />
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label">Base</label>
+                          <input class="form-control" type="number" name="base" value="4" step="0.1" min="0.1" />
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label">Relief</label>
+                          <input class="form-control" type="number" name="relief" value="2" step="0.1" min="0.1" />
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label">Threshold</label>
+                          <input class="form-control" type="number" name="threshold" value="190" step="1" min="0" max="255" />
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label">Resolution</label>
+                          <input class="form-control" type="number" name="resolution" value="0" step="1" min="0" />
+                        </div>
+                        <div class="col-md-4">
+                          <label class="form-label">Simplify</label>
+                          <input class="form-control" type="number" name="simplify" value="0.08" step="0.01" min="0" />
+                        </div>
+                      </div>
+
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <label class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="raised_border" checked />
+                            <span class="form-check-label">Raised border</span>
+                          </label>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="invert" />
+                            <span class="form-check-label">Invert tones</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                        <button type="submit" class="btn btn-lg btn-studio text-white px-4">
+                          <i class="ti ti-badge-check me-2"></i>
+                          Generate vector preview
+                        </button>
+                        <div class="text-muted-studio">The next step will show the traced outline for approval.</div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-lg-5">
+                <div class="card studio-card studio-step h-100">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-route me-2"></i>How the flow works</div>
+                      <div class="text-muted-studio">A guided path from upload to approval to 3D review.</div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="studio-checklist">
+                      <div class="studio-check-item">
+                        <div class="studio-icon-chip"><i class="ti ti-photo"></i></div>
+                        <div>
+                          <div class="fw-semibold">1. Upload artwork</div>
+                          <div class="text-muted-studio">Use clean black-and-white imagery for the best trace.</div>
+                        </div>
+                      </div>
+                      <div class="studio-check-item">
+                        <div class="studio-icon-chip"><i class="ti ti-vector-triangle"></i></div>
+                        <div>
+                          <div class="fw-semibold">2. Review vector preview</div>
+                          <div class="text-muted-studio">Inspect the traced SVG before committing to 3D generation.</div>
+                        </div>
+                      </div>
+                      <div class="studio-check-item">
+                        <div class="studio-icon-chip"><i class="ti ti-cube-send"></i></div>
+                        <div>
+                          <div class="fw-semibold">3. Approve and generate</div>
+                          <div class="text-muted-studio">Once approved, generate the STL and inspect it in 3D.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% elif session.stage == 'preview' %}
+            <div class="row g-4">
+              <div class="col-12 col-xl-7">
+                <div class="card studio-card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-vector-triangle me-2"></i>Vector preview</div>
+                      <div class="text-muted-studio">Approve the traced outline before building the 3D file.</div>
+                    </div>
+                    <div class="preview-badges d-flex gap-2 flex-wrap">
+                      <span class="badge">{{ session.preview_info.mode|capitalize }}</span>
+                      <span class="badge">{{ session.preview_info.contours }} contours</span>
+                      <span class="badge">{{ session.preview_info.area }}</span>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="studio-preview-frame studio-grid-preview p-3 p-lg-4">
+                      <div class="studio-svg-preview">{{ session.preview_svg | safe }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-xl-5">
+                <div class="card studio-card mb-4">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-clipboard-check me-2"></i>Review and approve</div>
+                      <div class="text-muted-studio">The 3D step stays locked until you approve this vector.</div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="row g-3 mb-4">
+                      <div class="col-6">
+                        <div class="studio-kpi">
+                          <div class="text-muted-studio small">Trace area</div>
+                          <div class="fw-bold">{{ session.preview_info.area }}</div>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="studio-kpi">
+                          <div class="text-muted-studio small">Bounds</div>
+                          <div class="fw-bold">{{ session.preview_info.bounds }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                      <form method="post" action="/approve" hx-post="/approve" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow">
+                        <input type="hidden" name="token" value="{{ session.token }}" />
+                        <button type="submit" class="btn btn-lg btn-studio text-white">
+                          <i class="ti ti-shield-check me-2"></i>
+                          Approve vector
+                        </button>
+                      </form>
+                      <a class="btn btn-lg btn-soft" href="/">
+                        <i class="ti ti-arrow-back-up me-2"></i>
+                        Start over
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                <div class="card studio-card">
+                  <div class="card-body">
+                    <div class="fw-semibold mb-2"><i class="ti ti-bulb me-2"></i>What happens next?</div>
+                    <div class="text-muted-studio">After approval, Stampify Studio will reveal the 3D generation step so you can produce the STL and inspect it interactively.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% elif session.stage == 'approved' %}
+            <div class="row g-4">
+              <div class="col-12 col-xl-7">
+                <div class="card studio-card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-checkup-list me-2"></i>Vector approved</div>
+                      <div class="text-muted-studio">The vector passed review. Generate the final 3D model when you are ready.</div>
+                    </div>
+                    <span class="badge bg-success-lt text-success">Approved</span>
+                  </div>
+                  <div class="card-body">
+                    <div class="studio-preview-frame studio-grid-preview p-3">
+                      <div class="studio-svg-preview">{{ session.preview_svg | safe }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-xl-5">
+                <div class="card studio-card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-cube-plus me-2"></i>Generate 3D file</div>
+                      <div class="text-muted-studio">This step turns the approved trace into a stamp-ready STL.</div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="row g-3 mb-4">
+                      <div class="col-6">
+                        <div class="studio-kpi">
+                          <div class="text-muted-studio small">Size</div>
+                          <div class="fw-bold">{{ session.options.size }} mm</div>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="studio-kpi">
+                          <div class="text-muted-studio small">Mode</div>
+                          <div class="fw-bold">{{ session.options.mode|capitalize }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <form method="post" action="/generate" hx-post="/generate" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow">
+                      <input type="hidden" name="token" value="{{ session.token }}" />
+                      <button type="submit" class="btn btn-lg btn-studio text-white w-100">
+                        <i class="ti ti-cube-send me-2"></i>
+                        Generate STL
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% elif session.stage == 'result' %}
+            <div class="row g-4">
+              <div class="col-12 col-xl-7">
+                <div class="card studio-card h-100">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-cube me-2"></i>Interactive 3D preview</div>
+                      <div class="text-muted-studio">Inspect the generated stamp from every angle before downloading.</div>
+                    </div>
+                    <span class="badge bg-success-lt text-success">Ready</span>
+                  </div>
+                  <div class="card-body">
+                    <div class="studio-viewer" data-mesh-url="{{ url_for('mesh_view', token=session.token) }}"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 col-xl-5">
+                <div class="card studio-card mb-4">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-report-analytics me-2"></i>Result details</div>
+                      <div class="text-muted-studio">The STL is ready for download.</div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="row g-3 mb-4">
+                      <div class="col-12">
+                        <div class="studio-kpi">
+                          <div class="text-muted-studio small">File</div>
+                          <div class="fw-bold">{{ session.result_path.name if session.result_path else session.upload_name ~ '-stamp.stl' }}</div>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="studio-kpi">
+                          <div class="text-muted-studio small">Dimensions</div>
+                          <div class="fw-bold">{{ session.result_info.dimensions }}</div>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="studio-kpi">
+                          <div class="text-muted-studio small">File size</div>
+                          <div class="fw-bold">{{ session.result_info.size }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                      <a class="btn btn-lg btn-studio text-white" href="{{ url_for('download_model', token=session.token) }}">
+                        <i class="ti ti-download me-2"></i>
+                        Download STL
+                      </a>
+                      <a class="btn btn-lg btn-soft" href="/">
+                        <i class="ti ti-repeat me-2"></i>
+                        Start another stamp
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                <div class="card studio-card">
+                  <div class="card-body">
+                    <div class="fw-semibold mb-2"><i class="ti ti-scan me-2"></i>Preview workflow complete</div>
+                    <div class="text-muted-studio">You approved the vector, generated the STL, and can now inspect or download the model.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+      import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/STLLoader.js';
+      import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+      function mountViewer(container) {
+        const meshUrl = container.dataset.meshUrl;
+        if (!meshUrl || container.dataset.viewerReady === 'true') {
+          return;
+        }
+        container.dataset.viewerReady = 'true';
+
+        const width = container.clientWidth || 640;
+        const height = container.clientHeight || 480;
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x07101f);
+
+        const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 1000);
+        camera.position.set(120, 120, 160);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio || 1);
+        renderer.setSize(width, height);
+        container.innerHTML = '';
+        container.appendChild(renderer.domElement);
+
+        const ambient = new THREE.AmbientLight(0xffffff, 1.4);
+        scene.add(ambient);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.9);
+        keyLight.position.set(100, 180, 140);
+        scene.add(keyLight);
+        const rimLight = new THREE.DirectionalLight(0x7c3aed, 0.8);
+        rimLight.position.set(-120, -50, 100);
+        scene.add(rimLight);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.9;
+
+        const loader = new STLLoader();
+        loader.load(meshUrl, (geometry) => {
+          geometry.center();
+          geometry.computeVertexNormals();
+          const material = new THREE.MeshStandardMaterial({
+            color: 0xe9f0ff,
+            metalness: 0.08,
+            roughness: 0.48,
+            emissive: 0x0d1220,
+            emissiveIntensity: 0.22,
+          });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.rotation.x = -Math.PI / 2;
+          scene.add(mesh);
+
+          const box = new THREE.Box3().setFromObject(mesh);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+          controls.target.copy(center);
+
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const fitDistance = maxDim * 1.8;
+          camera.position.set(center.x + fitDistance, center.y + fitDistance * 0.8, center.z + fitDistance);
+          camera.near = maxDim / 100;
+          camera.far = maxDim * 100;
+          camera.updateProjectionMatrix();
+          controls.update();
+
+          const resize = () => {
+            const nextWidth = container.clientWidth || width;
+            const nextHeight = container.clientHeight || height;
+            camera.aspect = nextWidth / nextHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(nextWidth, nextHeight, false);
+          };
+          window.addEventListener('resize', resize, { passive: true });
+        });
+
+        const animate = () => {
+          controls.update();
+          renderer.render(scene, camera);
+          requestAnimationFrame(animate);
+        };
+        animate();
+      }
+
+      function refreshViewers(root = document) {
+        root.querySelectorAll('[data-mesh-url]').forEach((el) => mountViewer(el));
+      }
+
+      document.addEventListener('DOMContentLoaded', () => refreshViewers());
+      document.body.addEventListener('htmx:afterSwap', (event) => refreshViewers(event.target));
+    </script>
+  </body>
+</html>

@@ -2,8 +2,8 @@
 
 ## Before the first public release
 
-1. Choose and add a real open-source `LICENSE` file.
-2. Confirm the GitHub repository is `https://github.com/nwcell/stampify`.
+1. Confirm the GitHub repository is `https://github.com/nwcell/stampify`.
+2. Confirm the package metadata in `pyproject.toml` matches the release version and URLs.
 3. On PyPI, add a pending Trusted Publisher for:
    - project name: `stampify`
    - owner/repository: `nwcell/stampify`

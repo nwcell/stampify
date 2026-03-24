@@ -87,3 +87,7 @@ This repo includes:
 - `.github/workflows/release.yml` for publishing to PyPI from a GitHub Release via Trusted Publishing.
 
 See `RELEASING.md` for the setup steps you still need to complete in GitHub and PyPI.
+
+## License
+
+MIT. See `LICENSE`.

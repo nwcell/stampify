@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.metadata as metadata
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +8,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = ROOT / "sample" / "xmas-cowboy.jpeg"
+
+
+def test_console_scripts_include_primary_and_compat_aliases() -> None:
+    entry_points = {entry_point.name: entry_point.value for entry_point in metadata.entry_points(group="console_scripts")}
+    assert entry_points["stampify"] == "ink_print.cli:main"
+    assert entry_points["ink-stamp"] == "ink_print.cli:main"
 
 
 def test_module_cli_generates_stamp(tmp_path: Path) -> None:

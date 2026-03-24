@@ -9,14 +9,14 @@ Repository: https://github.com/nwcell/stampify
 Run the CLI without installing:
 
 ```bash
-uvx --from stampify ink-stamp path/to/image.png
+uvx stampify path/to/image.png
 ```
 
 Install it as a standalone tool:
 
 ```bash
 uv tool install stampify
-ink-stamp path/to/image.png
+stampify path/to/image.png
 ```
 
 Add it to another Python project:
@@ -30,26 +30,26 @@ uv add stampify
 Generate the bundled sample stamp:
 
 ```bash
-uv run ink-stamp sample/xmas-cowboy.jpeg
+uv run stampify sample/xmas-cowboy.jpeg
 ```
 
 Write to a specific STL path:
 
 ```bash
-uvx --from stampify ink-stamp path/to/image.png -o stamp.stl
+uvx stampify path/to/image.png -o stamp.stl
 ```
 
 Compare the two geometry modes:
 
 ```bash
-uvx --from stampify ink-stamp path/to/image.png --mode vector -o stamp-vector.stl
-uvx --from stampify ink-stamp path/to/image.png --mode voxel --resolution 300 -o stamp-voxel.stl
+uvx stampify path/to/image.png --mode vector -o stamp-vector.stl
+uvx stampify path/to/image.png --mode voxel --resolution 300 -o stamp-voxel.stl
 ```
 
 Show all options:
 
 ```bash
-uvx --from stampify ink-stamp --help
+uvx stampify --help
 ```
 
 ## Python API
@@ -69,7 +69,7 @@ print(output_path, mesh.extents)
 Run from a local checkout:
 
 ```bash
-uv run ink-stamp sample/xmas-cowboy.jpeg
+uv run stampify sample/xmas-cowboy.jpeg
 ```
 
 Install the local checkout as a tool:
@@ -93,6 +93,7 @@ uv add git+https://github.com/nwcell/stampify
 - `--simplify` and `--min-area` are the main cleanup controls for traced artwork.
 - The default stamp mirrors the artwork so the printed impression reads correctly.
 - The border is raised by default. Disable it with `--no-raised-border`.
+- `ink-stamp` remains available as a compatibility alias for the CLI.
 
 ## Release automation
 

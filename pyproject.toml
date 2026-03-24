@@ -33,6 +33,7 @@ dependencies = [
 ]
 
 [project.scripts]
+stampify = "ink_print.cli:main"
 ink-stamp = "ink_print.cli:main"
 
 [project.optional-dependencies]

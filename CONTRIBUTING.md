@@ -17,7 +17,7 @@ uv run pytest
 Run the CLI against the bundled sample:
 
 ```bash
-uv run ink-stamp sample/xmas-cowboy.jpeg
+uv run stampify sample/xmas-cowboy.jpeg
 ```
 
 ## Pull requests

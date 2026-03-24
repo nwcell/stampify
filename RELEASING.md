@@ -27,5 +27,5 @@ PyPI trusted publishing docs:
 uv sync --extra test
 uv run pytest
 uv build
-uvx --from . ink-stamp sample/xmas-cowboy.jpeg
+uvx --from . stampify sample/xmas-cowboy.jpeg
 ```

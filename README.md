@@ -93,7 +93,6 @@ uv add git+https://github.com/nwcell/stampify
 - `--simplify` and `--min-area` are the main cleanup controls for traced artwork.
 - The default stamp mirrors the artwork so the printed impression reads correctly.
 - The border is raised by default. Disable it with `--no-raised-border`.
-- `ink-stamp` remains available as a compatibility alias for the CLI.
 
 ## Release automation
 

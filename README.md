@@ -6,61 +6,53 @@ Repository: https://github.com/nwcell/stampify
 
 ## Install
 
-Install from a checkout:
+Run the CLI without installing:
 
 ```bash
-uv tool install .
-```
-
-Run without installing:
-
-```bash
-uvx --from . ink-stamp sample/xmas-cowboy.jpeg
-```
-
-## Standalone CLI
-
-Run it directly from the repo:
-
-```bash
-uv run ink-stamp sample/xmas-cowboy.jpeg
+uvx --from stampify ink-stamp path/to/image.png
 ```
 
 Install it as a standalone tool:
 
 ```bash
-uv tool install .
-ink-stamp sample/xmas-cowboy.jpeg
+uv tool install stampify
+ink-stamp path/to/image.png
 ```
 
-## Sample
-
-The repo includes `sample/xmas-cowboy.jpeg` as a sample input. Generate the sample stamp with:
-
-```bash
-uv run ink-stamp sample/xmas-cowboy.jpeg -o xmas-cowboy-stamp.stl
-```
-
-Or compare the two geometry modes against the same sample:
-
-```bash
-uv run ink-stamp sample/xmas-cowboy.jpeg --mode vector -o xmas-cowboy-vector-stamp.stl
-uv run ink-stamp sample/xmas-cowboy.jpeg --mode voxel --resolution 300 -o xmas-cowboy-voxel-stamp.stl
-```
-
-## Add To Another Project
-
-Add the package from GitHub:
-
-```bash
-uv add git+https://github.com/nwcell/stampify
-```
-
-Once you publish to PyPI, the same package can be added with:
+Add it to another Python project:
 
 ```bash
 uv add stampify
 ```
+
+## CLI
+
+Generate the bundled sample stamp:
+
+```bash
+uv run ink-stamp sample/xmas-cowboy.jpeg
+```
+
+Write to a specific STL path:
+
+```bash
+uvx --from stampify ink-stamp path/to/image.png -o stamp.stl
+```
+
+Compare the two geometry modes:
+
+```bash
+uvx --from stampify ink-stamp path/to/image.png --mode vector -o stamp-vector.stl
+uvx --from stampify ink-stamp path/to/image.png --mode voxel --resolution 300 -o stamp-voxel.stl
+```
+
+Show all options:
+
+```bash
+uvx --from stampify ink-stamp --help
+```
+
+## Python API
 
 Use it from Python:
 
@@ -68,16 +60,39 @@ Use it from Python:
 from ink_print import StampOptions, write_stamp
 
 options = StampOptions(mode="vector", size=80, border=2, simplify=0.05)
-output_path, mesh = write_stamp("sample/xmas-cowboy.jpeg", options=options)
+output_path, mesh = write_stamp("path/to/image.png", options=options)
 print(output_path, mesh.extents)
+```
+
+## Development
+
+Run from a local checkout:
+
+```bash
+uv run ink-stamp sample/xmas-cowboy.jpeg
+```
+
+Install the local checkout as a tool:
+
+```bash
+uv tool install .
+```
+
+Add the local checkout to another project:
+
+```bash
+uv add git+https://github.com/nwcell/stampify
 ```
 
 ## Notes
 
+- The repo includes `sample/xmas-cowboy.jpeg` as a sample input.
 - `vector` mode is the default and produces smoother, smaller meshes.
 - `voxel` mode is still available as a fallback.
 - `--resolution 0` keeps the source image resolution.
 - `--simplify` and `--min-area` are the main cleanup controls for traced artwork.
+- The default stamp mirrors the artwork so the printed impression reads correctly.
+- The border is raised by default. Disable it with `--no-raised-border`.
 
 ## Release automation
 
@@ -86,7 +101,7 @@ This repo includes:
 - `.github/workflows/ci.yml` for tests and build validation on pushes and pull requests.
 - `.github/workflows/release.yml` for publishing to PyPI from a GitHub Release via Trusted Publishing.
 
-See `RELEASING.md` for the setup steps you still need to complete in GitHub and PyPI.
+See `RELEASING.md` for the release process.
 
 ## License
 

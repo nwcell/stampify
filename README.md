@@ -1,6 +1,8 @@
-# ink-print
+# stampify
 
 Turn black-and-white artwork into stamp-ready STL models.
+
+Repository: https://github.com/nwcell/stampify
 
 ## Install
 
@@ -48,16 +50,16 @@ uv run ink-stamp sample/xmas-cowboy.jpeg --mode voxel --resolution 300 -o xmas-c
 
 ## Add To Another Project
 
-Add the local package:
+Add the package from GitHub:
 
 ```bash
-uv add /Users/travis/Projects/ink-print
+uv add git+https://github.com/nwcell/stampify
 ```
 
 Once you publish to PyPI, the same package can be added with:
 
 ```bash
-uv add ink-print
+uv add stampify
 ```
 
 Use it from Python:

@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ink-print"
+name = "stampify"
 version = "0.1.0"
 description = "Turn black-and-white artwork into stamp-ready STL models."
 readme = "README.md"
@@ -36,6 +36,11 @@ ink-stamp = "ink_print.cli:main"
 test = [
   "pytest>=8,<9",
 ]
+
+[project.urls]
+Homepage = "https://github.com/nwcell/stampify"
+Repository = "https://github.com/nwcell/stampify"
+Issues = "https://github.com/nwcell/stampify/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ink_print"]

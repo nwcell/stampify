@@ -3,11 +3,10 @@
 ## Before the first public release
 
 1. Choose and add a real open-source `LICENSE` file.
-2. Create the GitHub repository for this project.
-3. Update `pyproject.toml` with `project.urls` once the repository URL exists.
-4. On PyPI, add a pending Trusted Publisher for:
-   - project name: `ink-print`
-   - owner/repository: your GitHub org or user and repository name
+2. Confirm the GitHub repository is `https://github.com/nwcell/stampify`.
+3. On PyPI, add a pending Trusted Publisher for:
+   - project name: `stampify`
+   - owner/repository: `nwcell/stampify`
    - workflow file: `release.yml`
    - environment: `pypi`
 

@@ -76,12 +76,32 @@
         border-radius: var(--tblr-border-radius-lg);
         overflow: hidden;
         background: #111;
-        min-height: 250px;
+        min-height: 15rem;
+        padding: .75rem;
       }
       .svg-preview-frame svg {
         width: 100%;
         height: auto;
         display: block;
+      }
+
+      .preview-empty-state {
+        display: flex;
+        min-height: 15rem;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        border: 1px dashed var(--tblr-border-color);
+        border-radius: var(--tblr-border-radius-lg);
+        background: rgba(var(--tblr-primary-rgb), .03);
+        text-align: center;
+      }
+      .preview-empty-state i {
+        font-size: 2rem;
+      }
+
+      .action-buttons > * {
+        flex: 0 1 auto;
       }
 
       .required-indicator {
@@ -140,6 +160,7 @@
 
       @media (max-width: 767.98px) {
         .stepper-step span { display: none; }
+        .action-buttons > * { width: 100%; }
         .action-buttons .btn { width: 100%; }
       }
     </style>
@@ -173,27 +194,15 @@
             {% endif %}
 
             <div id="workflow">
-              <p class="text-secondary mb-2">Upload artwork, adjust the settings, and review the SVG preview right beneath the form before generating a 3D-printable stamp STL.</p>
+              <p class="text-secondary mb-2">Upload artwork, adjust the settings, and review the SVG preview in the pane to the right before generating a 3D-printable stamp STL.</p>
               <div class="stepper mb-3">
-                <a class="stepper-step {% if view_stage == 'upload' %}is-active{% elif session is not none %}is-done{% endif %}" href="{% if session is not none %}{{ url_for('index') }}?token={{ session.token }}&view=upload{% else %}/{% endif %}">
+                <a class="stepper-step {% if view_stage == 'result' %}is-done{% else %}is-active{% endif %}" href="{% if session is not none %}{{ url_for('index') }}?token={{ session.token }}&view=upload{% else %}/{% endif %}">
                   <i class="ti ti-upload"></i>
                   <span>Upload</span>
                 </a>
                 <span class="stepper-divider"><i class="ti ti-chevron-right"></i></span>
-                {% if session is not none %}
-                <a class="stepper-step {% if view_stage == 'preview' %}is-active{% elif session.result_path is not none %}is-done{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=preview">
-                  <i class="ti ti-vector-triangle"></i>
-                  <span>Preview</span>
-                </a>
-                {% else %}
-                <span class="stepper-step is-disabled">
-                  <i class="ti ti-vector-triangle"></i>
-                  <span>Preview</span>
-                </span>
-                {% endif %}
-                <span class="stepper-divider"><i class="ti ti-chevron-right"></i></span>
                 {% if session is not none and session.result_path is not none %}
-                <a class="stepper-step {% if view_stage == 'result' %}is-active{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=result">
+                <a class="stepper-step {% if view_stage == 'result' %}is-active{% else %}is-done{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=result">
                   <i class="ti ti-cube"></i>
                   <span>Result</span>
                 </a>
@@ -223,29 +232,63 @@
 
               <div class="card mb-3">
                 <div class="card-body">
+                  {% set preview_ready = session is not none and session.preview_svg %}
                   <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay" hx-validate="true" id="preview-form">
-                    <div class="mb-3">
-                      <label class="upload-zone" for="artwork-input" id="upload-zone">
-                        <input id="artwork-input" type="file" name="artwork" accept="image/*,.svg" required />
-                        <div class="upload-zone-content">
-                          <div class="upload-zone-prompt">
-                            <div class="mb-2"><i class="ti ti-cloud-upload" style="font-size:2rem;"></i></div>
-                            <div class="fw-semibold">Drop image here or browse</div>
-                            <div class="text-secondary mt-1">High-contrast black &amp; white works best</div>
-                            <div class="text-secondary mt-2" style="font-size:.8rem;">PNG &middot; JPG &middot; SVG</div>
-                          </div>
-                          <div class="upload-zone-preview">
-                            <img id="upload-thumb" src="" alt="Selected artwork" />
-                            <div class="mt-2">
-                              <span class="fw-semibold" data-file-name></span>
-                              <button type="button" class="btn btn-sm btn-ghost-secondary ms-2 upload-zone-clear" id="upload-clear"><i class="ti ti-x"></i></button>
+                    <div class="row g-4 align-items-start">
+                      <div class="col-12 col-lg-6">
+                        <div class="mb-3">
+                          <label class="upload-zone" for="artwork-input" id="upload-zone">
+                            <input id="artwork-input" type="file" name="artwork" accept="image/*,.svg" required />
+                            <div class="upload-zone-content">
+                              <div class="upload-zone-prompt">
+                                <div class="mb-2"><i class="ti ti-cloud-upload" style="font-size:2rem;"></i></div>
+                                <div class="fw-semibold">Drop image here or browse</div>
+                                <div class="text-secondary mt-1">High-contrast black &amp; white works best</div>
+                                <div class="text-secondary mt-2" style="font-size:.8rem;">PNG &middot; JPG &middot; SVG</div>
+                              </div>
+                              <div class="upload-zone-preview">
+                                <img id="upload-thumb" src="" alt="Selected artwork" />
+                                <div class="mt-2">
+                                  <span class="fw-semibold" data-file-name></span>
+                                  <button type="button" class="btn btn-sm btn-ghost-secondary ms-2 upload-zone-clear" id="upload-clear"><i class="ti ti-x"></i></button>
+                                </div>
+                              </div>
                             </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div class="col-12 col-lg-6">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                          <h4 class="mb-0">SVG Preview</h4>
+                          {% if preview_ready %}
+                          <span class="badge bg-success-lt">Generated</span>
+                          {% else %}
+                          <span class="badge bg-secondary-lt">Waiting</span>
+                          {% endif %}
+                        </div>
+                        {% if preview_ready %}
+                        <div class="svg-preview-frame">
+                          <div>{{ session.preview_svg | safe }}</div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                          <span class="badge">{{ session.preview_info.contours }} contours</span>
+                          <span class="badge">{{ session.preview_info.area }}</span>
+                          <span class="badge">{{ session.preview_info.dimensions }}</span>
+                        </div>
+                        {% else %}
+                        <div class="preview-empty-state">
+                          <div>
+                            <div class="mb-2"><i class="ti ti-vector-triangle"></i></div>
+                            <div class="fw-semibold">No SVG preview yet</div>
+                            <div class="text-secondary small">Upload an image and press Preview to trace it here.</div>
                           </div>
                         </div>
-                      </label>
+                        {% endif %}
+                      </div>
                     </div>
 
-                    <div class="mb-2">
+                    <div class="mb-2 mt-4">
                       <h4 class="mb-2">Options</h4>
                       <div class="text-secondary small mb-3">
                         Required fields are prefilled.
@@ -279,7 +322,7 @@
                           <input class="form-control form-control-sm" id="simplify-input" type="number" name="simplify" value="{{ defaults.simplify }}" step="0.01" min="0" required />
                           <span class="form-hint">Higher = smoother, lower = more detail</span>
                         </div>
-                        <div class="col-12 col-xl-6">
+                        <div class="col-12 col-lg-6">
                           <div class="row g-3">
                             <div class="col-12 col-md-6">
                               <label class="form-label" for="width-input">Max width</label>
@@ -347,43 +390,32 @@
                         </div>
                       </div>
                     </div>
+                  </form>
 
-                    <button type="submit" class="btn btn-primary">
+                  <div class="d-flex flex-wrap justify-content-end gap-2 action-buttons mt-4">
+                    <button type="submit" class="btn btn-primary" form="preview-form">
                       <i class="ti ti-eye me-1"></i>
                       Preview
                     </button>
-                  </form>
-                </div>
-              </div>
-
-              {% if session is not none and view_stage == 'preview' %}
-              <div class="card">
-                <div class="card-body">
-                  <div class="svg-preview-frame mb-3 p-2">
-                    <div>{{ session.preview_svg | safe }}</div>
-                  </div>
-                  <div class="d-flex flex-wrap gap-2 mb-3">
-                    <span class="badge">{{ session.preview_info.contours }} contours</span>
-                    <span class="badge">{{ session.preview_info.area }}</span>
-                    <span class="badge">{{ session.preview_info.dimensions }}</span>
-                  </div>
-                  <div class="action-buttons d-flex flex-wrap gap-2">
-                    <form method="post" action="/generate" hx-post="/generate" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay">
+                    {% if preview_ready %}
+                    <form method="post" action="/generate" hx-post="/generate" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay" class="m-0">
                       <input type="hidden" name="token" value="{{ session.token }}" />
                       <button type="submit" class="btn btn-primary">
                         <i class="ti ti-cube-send me-1"></i>
                         Generate STL
                       </button>
                     </form>
-                    <a class="btn btn-ghost-secondary" href="{{ url_for('index') }}?token={{ session.token }}&view=upload">
-                      <i class="ti ti-arrow-left me-1"></i>
-                      Back to upload
-                    </a>
+                    {% else %}
+                    <button type="button" class="btn btn-secondary" disabled aria-disabled="true" title="Generate a preview first">
+                      <i class="ti ti-cube-send me-1"></i>
+                      Generate STL
+                    </button>
+                    {% endif %}
                   </div>
                 </div>
               </div>
 
-              {% elif session is not none and view_stage == 'result' %}
+              {% if session is not none and view_stage == 'result' %}
               <div class="card">
                 <div class="card-body">
                   <div class="viewer-container mb-3" data-mesh-url="{{ url_for('mesh_view', token=session.token) }}"></div>

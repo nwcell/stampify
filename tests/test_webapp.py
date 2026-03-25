@@ -42,6 +42,11 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert root.status_code == 200
     assert "Preview" in root.text
     assert "Stampify Studio" in root.text
+    assert "SVG Preview" in root.text
+    assert "No SVG preview yet" in root.text
+    assert 'title="Generate a preview first"' in root.text
+    assert 'disabled aria-disabled="true"' in root.text
+    assert "?view=preview" not in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.threshold}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.resolution}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.border}"' in root.text
@@ -59,6 +64,9 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert preview.status_code == 200
     assert "Generate STL" in preview.text
     assert "Preview" in preview.text
+    assert "SVG Preview" in preview.text
+    assert "Generated" in preview.text
+    assert "No SVG preview yet" not in preview.text
     assert "name=\"token\"" in preview.text
     assert "90.0 × 90.0 mm" in preview.text
     assert '<rect x="0" y="0" width="100%" height="100%" fill="#fff" />' in preview.text
@@ -73,15 +81,19 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
 
     preview_view = client.get(f"/?token={token}&view=preview")
     assert preview_view.status_code == 200
-    assert "Preview" in preview_view.text
+    assert "SVG Preview" in preview_view.text
     assert "Generate STL" in preview_view.text
+    assert "No SVG preview yet" not in preview_view.text
     assert "90.0 × 90.0 mm" in preview_view.text
+    assert "?view=preview" not in preview_view.text
 
     upload_view = client.get(f"/?token={token}&view=upload")
     assert upload_view.status_code == 200
     assert "Session saved" in upload_view.text
     assert "Reset to blank" in upload_view.text
-    assert "Generate STL" not in upload_view.text
+    assert "SVG Preview" in upload_view.text
+    assert "Generate STL" in upload_view.text
+    assert "No SVG preview yet" not in upload_view.text
 
     generated = client.post("/generate", data={"token": token})
     assert generated.status_code == 200
@@ -150,5 +162,5 @@ def test_webapp_accepts_svg_artwork() -> None:
     )
     assert preview.status_code == 200
     assert "Generate STL" in preview.text
-    assert "Preview" in preview.text
+    assert "SVG Preview" in preview.text
     assert "name=\"token\"" in preview.text

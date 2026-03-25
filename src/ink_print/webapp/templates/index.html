@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Stampify Studio</title>
+    <meta name="stampify-boot-id" content="{{ server_boot_id }}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -233,6 +234,7 @@
                       <div class="text-secondary small mb-3">
                         Required fields are prefilled. Enter width, height, or both for the max dimensions; if only one is filled, that value becomes the effective max size.
                       </div>
+                      {% set max_dimension_default = defaults.size if session is none else '' %}
                       <div class="row g-3">
                         <div class="col-6 col-md-4 col-xl-3">
                           <label class="form-label d-flex align-items-center gap-2" for="threshold-input">
@@ -270,14 +272,14 @@
                             <div class="col-12 col-md-6">
                               <label class="form-label" for="width-input">Max width</label>
                               <div class="input-group input-group-sm">
-                                <input class="form-control" id="width-input" type="number" name="width" value="{{ defaults.width if defaults.width is not none else '' }}" step="0.1" min="0" placeholder="Optional" />
+                                <input class="form-control" id="width-input" type="number" name="width" value="{{ defaults.width if defaults.width is not none else max_dimension_default }}" step="0.1" min="0" placeholder="Optional" />
                                 <span class="input-group-text">mm</span>
                               </div>
                             </div>
                             <div class="col-12 col-md-6">
                               <label class="form-label" for="height-input">Max height</label>
                               <div class="input-group input-group-sm">
-                                <input class="form-control" id="height-input" type="number" name="height" value="{{ defaults.height if defaults.height is not none else '' }}" step="0.1" min="0" placeholder="Optional" />
+                                <input class="form-control" id="height-input" type="number" name="height" value="{{ defaults.height if defaults.height is not none else max_dimension_default }}" step="0.1" min="0" placeholder="Optional" />
                                 <span class="input-group-text">mm</span>
                               </div>
                             </div>
@@ -611,10 +613,39 @@
         validate();
       }
 
+      function mountHotReload() {
+        const meta = document.querySelector('meta[name="stampify-boot-id"]');
+        if (!meta || document.documentElement.dataset.hotReloadReady === 'true') return;
+        document.documentElement.dataset.hotReloadReady = 'true';
+
+        const bootId = meta.content;
+        let reloadTriggered = false;
+
+        async function checkBootId() {
+          if (reloadTriggered) return;
+          try {
+            const response = await fetch('/__reload-id', { cache: 'no-store' });
+            if (!response.ok) return;
+            const payload = await response.json();
+            if (payload.boot_id && payload.boot_id !== bootId) {
+              reloadTriggered = true;
+              window.location.reload();
+            }
+          } catch (error) {
+            // Ignore transient network errors while the backend is restarting.
+          }
+        }
+
+        checkBootId();
+        const timer = window.setInterval(checkBootId, 1500);
+        window.addEventListener('beforeunload', () => window.clearInterval(timer), { once: true });
+      }
+
       function refreshViewers(root = document) {
         root.querySelectorAll('[data-mesh-url]').forEach((el) => mountViewer(el));
         root.querySelectorAll('#preview-form').forEach((form) => mountUploadZone(form));
         root.querySelectorAll('#preview-form').forEach((form) => mountDimensionValidation(form));
+        mountHotReload();
       }
 
       document.addEventListener('DOMContentLoaded', () => refreshViewers());

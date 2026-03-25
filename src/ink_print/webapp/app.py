@@ -34,6 +34,7 @@ app = FastAPI(
 
 DEFAULT_OPTIONS = CLI_DEFAULT_OPTIONS
 WEBAPP_IMPORT = "ink_print.webapp.app:app"
+SERVER_BOOT_ID = secrets.token_urlsafe(16)
 
 
 @dataclass(slots=True)
@@ -194,6 +195,7 @@ def _render_page(
         request,
         "index.html",
         {
+            "server_boot_id": SERVER_BOOT_ID,
             "session": session,
             "defaults": defaults,
             "error": error,
@@ -204,6 +206,9 @@ def _render_page(
 
 def _resolve_view_stage(session: WebSession | None, requested: Literal["upload", "preview", "result"] | str) -> Literal["upload", "preview", "result"]:
     if session is None:
+        return "upload"
+
+    if requested == "upload":
         return "upload"
 
     if requested == "result" and session.result_path is not None and session.result_path.exists():
@@ -241,6 +246,11 @@ def index(
         return _render_page(request, error="That preview session expired. Please upload a new image.")
 
     return _render_page(request, session=session, view_stage=_resolve_view_stage(session, view))
+
+
+@app.get("/__reload-id", name="reload_id")
+def reload_id() -> dict[str, str]:
+    return {"boot_id": SERVER_BOOT_ID}
 
 
 @app.post("/preview", response_class=HTMLResponse)
@@ -336,6 +346,14 @@ def generate(request: Request, token: str = Form(...)) -> HTMLResponse:
         "size": _human_size(result_path.stat().st_size),
     }
     return _render_page(request, session=session, view_stage="result")
+
+
+@app.post("/reset", response_class=HTMLResponse)
+def reset(request: Request, token: str | None = Form(None)) -> HTMLResponse:
+    if token:
+        _cleanup_session(token)
+
+    return _render_page(request, view_stage="upload")
 
 
 @app.get("/artifact/{token}/mesh", name="mesh_view")

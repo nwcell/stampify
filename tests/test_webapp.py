@@ -46,6 +46,8 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert f'value="{CLI_DEFAULT_OPTIONS.resolution}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.border}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.relief}"' in root.text
+    assert 'name="width" value="80.0"' in root.text
+    assert 'name="height" value="80.0"' in root.text
     assert "width, height, or both" in root.text.lower()
 
     with SAMPLE.open("rb") as image:
@@ -100,6 +102,22 @@ def test_webapp_main_enables_reload_by_default(monkeypatch) -> None:
     assert captured["args"] == (webapp_app.WEBAPP_IMPORT,)
     assert captured["kwargs"]["reload"] is True
     assert captured["kwargs"]["reload_dirs"] == [str(webapp_app.APP_DIR.parent.parent)]
+
+
+def test_webapp_exposes_reload_boot_id() -> None:
+    client = TestClient(app)
+
+    root = client.get("/")
+    assert root.status_code == 200
+
+    meta_match = re.search(r'<meta name="stampify-boot-id" content="([^"]+)" />', root.text)
+    assert meta_match is not None
+
+    reload_response = client.get("/__reload-id")
+    assert reload_response.status_code == 200
+    assert reload_response.json()["boot_id"] == meta_match.group(1)
+    assert "/__reload-id" in root.text
+    assert "window.location.reload()" in root.text
 
 
 def test_webapp_accepts_svg_artwork() -> None:

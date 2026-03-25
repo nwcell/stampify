@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
+
 from ink_print import StampOptions, build_stamp_mesh, default_output_path, load_mask, write_stamp
-from ink_print.core import _rasterize_svg, validate_size
+from ink_print.core import _rasterize_svg, trace_geometry, validate_size
 
 
 SAMPLE = Path(__file__).resolve().parents[1] / "sample" / "xmas-cowboy.jpeg"
@@ -64,6 +66,13 @@ def test_load_mask_raises_for_empty_artwork() -> None:
         assert "No stamp pixels found" in str(exc)
     else:
         raise AssertionError("Expected load_mask to raise for an empty thresholded image")
+
+
+def test_trace_geometry_handles_artwork_touching_the_crop_edge() -> None:
+    geometry = trace_geometry(np.array([[True, True], [True, True]]))
+    assert geometry.geom_type == "Polygon"
+    assert round(float(geometry.area), 1) == 3.5
+    assert tuple(round(value, 1) for value in geometry.bounds) == (-0.5, 0.5, 1.5, 2.5)
 
 
 def test_rasterize_svg_preserves_path_holes(tmp_path: Path) -> None:

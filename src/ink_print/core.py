@@ -703,11 +703,14 @@ def iter_polygons(geometry) -> list[Polygon]:
 
 
 def trace_geometry(mask: np.ndarray):
+    padded_mask = np.pad(mask.astype(bool), 1, constant_values=False)
     contours = []
-    for points in measure.find_contours(mask.astype(float), 0.5, positive_orientation="high"):
+    for points in measure.find_contours(padded_mask.astype(float), 0.5, positive_orientation="high"):
         if len(points) < 3:
             continue
-        geometry = make_valid(Polygon([(col, mask.shape[0] - row) for row, col in points]).buffer(0))
+        geometry = make_valid(
+            Polygon([(col - 1.0, padded_mask.shape[0] - row - 1.0) for row, col in points]).buffer(0)
+        )
         contours.extend(iter_polygons(geometry))
     if not contours:
         raise ValueError("No contours found after tracing the image.")

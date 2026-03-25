@@ -79,6 +79,11 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert "mm" in root.text
 
     token = _extract_token(preview.text)
+    assert f'/artifact/{token}/upload' in preview.text
+
+    upload = client.get(f"/artifact/{token}/upload")
+    assert upload.status_code == 200
+    assert upload.headers["content-type"].startswith("image/")
 
     session_view = client.get(f"/?token={token}")
     assert session_view.status_code == 200
@@ -93,6 +98,8 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert generated.status_code == 200
     assert "Download STL" in generated.text
     assert "data-mesh-url" in generated.text
+    assert 'data-auto-scroll-result="true"' in generated.text
+    assert 'id="generated-stl"' in generated.text
 
     generated_view = client.get(f"/?token={token}")
     assert generated_view.status_code == 200

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 import os
 import secrets
 import shutil
@@ -67,6 +68,10 @@ def _human_size(num_bytes: int) -> str:
 
 def _format_mm(value: float) -> str:
     return f"{value:.1f} mm"
+
+
+def _guess_media_type(path: Path) -> str:
+    return mimetypes.guess_type(path.name)[0] or "application/octet-stream"
 
 
 def _parse_optional_float(value: str | None) -> float | None:
@@ -187,6 +192,7 @@ def _render_page(
     request: Request,
     session: WebSession | None = None,
     error: str | None = None,
+    auto_scroll_result: bool = False,
 ) -> HTMLResponse:
     defaults = session.options if session is not None else DEFAULT_OPTIONS
     return TEMPLATES.TemplateResponse(
@@ -197,6 +203,7 @@ def _render_page(
             "session": session,
             "defaults": defaults,
             "error": error,
+            "auto_scroll_result": auto_scroll_result,
         },
     )
 
@@ -325,7 +332,16 @@ def generate(request: Request, token: str = Form(...)) -> HTMLResponse:
         "dimensions": f"{mesh.extents[0]:.1f} × {mesh.extents[1]:.1f} × {mesh.extents[2]:.1f} mm",
         "size": _human_size(result_path.stat().st_size),
     }
-    return _render_page(request, session=session)
+    return _render_page(request, session=session, auto_scroll_result=True)
+
+
+@app.get("/artifact/{token}/upload", name="uploaded_artwork")
+def uploaded_artwork(token: str) -> FileResponse:
+    session = _get_session(token)
+    if session is None or not session.upload_path.exists():
+        raise HTTPException(status_code=404, detail="That uploaded artwork is no longer available.")
+
+    return FileResponse(session.upload_path, media_type=_guess_media_type(session.upload_path))
 
 
 @app.post("/reset", response_class=HTMLResponse)

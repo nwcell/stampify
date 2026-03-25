@@ -100,6 +100,10 @@
         font-size: 2rem;
       }
 
+      .stl-result-card {
+        scroll-margin-top: 1.5rem;
+      }
+
       .settings-section {
         padding: 1rem;
         border: 1px solid var(--tblr-border-color);
@@ -292,7 +296,7 @@
                     <div class="row g-4 align-items-stretch">
                       <div class="col-12 col-md-6 d-flex flex-column justify-content-center">
                         <div class="mb-3">
-                          <label class="upload-zone" for="artwork-input" id="upload-zone">
+                          <label class="upload-zone{% if session is not none %} has-preview{% endif %}" for="artwork-input" id="upload-zone" data-fallback-upload-url="{{ url_for('uploaded_artwork', token=session.token) if session is not none else '' }}" data-fallback-upload-name="{{ session.upload_name if session is not none else '' }}">
                             <input id="artwork-input" type="file" name="artwork" accept="image/*,.svg" required />
                             <div class="upload-zone-content">
                               <div class="upload-zone-prompt">
@@ -302,9 +306,9 @@
                                 <div class="text-secondary mt-2" style="font-size:.8rem;">PNG &middot; JPG &middot; SVG</div>
                               </div>
                               <div class="upload-zone-preview">
-                                <img id="upload-thumb" src="" alt="Selected artwork" />
+                                <img id="upload-thumb" src="{% if session is not none %}{{ url_for('uploaded_artwork', token=session.token) }}{% endif %}" alt="Selected artwork" />
                                 <div class="mt-2">
-                                  <span class="fw-semibold" data-file-name></span>
+                                  <span class="fw-semibold" data-file-name>{% if session is not none %}{{ session.upload_name }}{% endif %}</span>
                                   <button type="button" class="btn btn-sm btn-ghost-secondary ms-2 upload-zone-clear" id="upload-clear"><i class="ti ti-x"></i></button>
                                 </div>
                               </div>
@@ -504,7 +508,7 @@
               </div>
 
               {% if session is not none and session.result_path is not none %}
-              <div class="card">
+              <div class="card stl-result-card" id="generated-stl" {% if auto_scroll_result %}data-auto-scroll-result="true"{% endif %}>
                 <div class="card-body">
                   <div class="viewer-container mb-3" data-mesh-url="{{ url_for('mesh_view', token=session.token) }}"></div>
                   <div class="d-flex flex-wrap gap-3 align-items-center mb-3 text-secondary">
@@ -656,6 +660,8 @@
         const thumb = form.querySelector('#upload-thumb');
         const nameEl = form.querySelector('[data-file-name]');
         const clearBtn = form.querySelector('#upload-clear');
+        const fallbackUrl = zone?.dataset.fallbackUploadUrl || '';
+        const fallbackName = zone?.dataset.fallbackUploadName || '';
 
         if (!input || !zone || form.dataset.uploadReady === 'true') return;
         form.dataset.uploadReady = 'true';
@@ -664,20 +670,27 @@
 
         function showPreview() {
           const file = input.files && input.files[0];
-          if (!file) {
-            zone.classList.remove('has-preview');
-            if (nameEl) nameEl.textContent = '';
-            if (thumb) thumb.src = '';
-            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
-            return;
-          }
-          zone.classList.add('has-preview');
-          if (nameEl) nameEl.textContent = file.name;
-          if (thumb) {
+          if (file) {
+            zone.classList.add('has-preview');
+            if (nameEl) nameEl.textContent = file.name;
             if (objectUrl) URL.revokeObjectURL(objectUrl);
             objectUrl = URL.createObjectURL(file);
-            thumb.src = objectUrl;
+            if (thumb) thumb.src = objectUrl;
+            return;
           }
+
+          if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+
+          if (fallbackUrl) {
+            zone.classList.add('has-preview');
+            if (nameEl) nameEl.textContent = fallbackName;
+            if (thumb) thumb.src = fallbackUrl;
+            return;
+          }
+
+          zone.classList.remove('has-preview');
+          if (nameEl) nameEl.textContent = '';
+          if (thumb) thumb.src = '';
         }
 
         input.addEventListener('change', showPreview);
@@ -769,15 +782,25 @@
         window.addEventListener('beforeunload', () => window.clearInterval(timer), { once: true });
       }
 
+      function scrollGeneratedStlCard(root = document) {
+        const target = root.querySelector('#generated-stl[data-auto-scroll-result="true"]');
+        if (!target) return;
+
+        window.requestAnimationFrame(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+
       function refreshViewers(root = document) {
         root.querySelectorAll('[data-mesh-url]').forEach((el) => mountViewer(el));
         root.querySelectorAll('#preview-form').forEach((form) => mountUploadZone(form));
         root.querySelectorAll('#preview-form').forEach((form) => mountDimensionValidation(form));
+        scrollGeneratedStlCard(root);
         mountHotReload();
       }
 
       document.addEventListener('DOMContentLoaded', () => refreshViewers());
-      document.body.addEventListener('htmx:afterSettle', () => refreshViewers());
+      document.body.addEventListener('htmx:afterSettle', (event) => refreshViewers(event.target));
     </script>
   </body>
 </html>

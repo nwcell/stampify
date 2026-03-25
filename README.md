@@ -60,6 +60,8 @@ Launch the browser app from the repo root with one line:
 uv run --extra web python -m ink_print.webapp
 ```
 
+The dev server reloads automatically when you edit files.
+
 The web app guides you through:
 
 - Upload artwork.

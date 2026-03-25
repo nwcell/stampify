@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from ink_print.cli import DEFAULT_OPTIONS as CLI_DEFAULT_OPTIONS
+import ink_print.webapp.app as webapp_app
 from ink_print.webapp.app import app
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +56,10 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert "Generate STL" in preview.text
     assert "Preview" in preview.text
     assert "name=\"token\"" in preview.text
+    assert '<rect x="0" y="0" width="100%" height="100%" fill="#fff" />' in preview.text
+    assert 'fill="#000" fill-rule="evenodd" stroke="#000"' in preview.text
+    assert "linearGradient" not in preview.text
+    assert "feDropShadow" not in preview.text
     assert "Max width" in root.text
     assert "Max height" in root.text
     assert "mm" in root.text
@@ -76,6 +81,21 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert result_view.status_code == 200
     assert "Result" in result_view.text
     assert "Download STL" in result_view.text
+
+
+def test_webapp_main_enables_reload_by_default(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run(*args, **kwargs) -> None:
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+
+    monkeypatch.setattr(webapp_app.uvicorn, "run", fake_run)
+
+    assert webapp_app.main() == 0
+    assert captured["args"] == (webapp_app.WEBAPP_IMPORT,)
+    assert captured["kwargs"]["reload"] is True
+    assert captured["kwargs"]["reload_dirs"] == [str(webapp_app.APP_DIR.parent.parent)]
 
 
 def test_webapp_accepts_svg_artwork() -> None:

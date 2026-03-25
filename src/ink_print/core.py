@@ -131,7 +131,7 @@ def _parse_svg_transforms(transform: str | None) -> list[tuple[float, float, flo
 
 def _apply_svg_transform(point: tuple[float, float], transforms: list[tuple[float, float, float, float, float, float]]) -> tuple[float, float]:
     x, y = point
-    for a, b, c, d, e, f in transforms:
+    for a, b, c, d, e, f in reversed(transforms):
         x, y = a * x + c * y + e, b * x + d * y + f
     return x, y
 
@@ -544,7 +544,7 @@ def _svg_canvas_size(root: ET.Element) -> tuple[int, int, list[tuple[float, floa
     height = max(1, round(_parse_svg_number(root.attrib.get("height"), vb_height)))
     sx = width / vb_width if vb_width else 1.0
     sy = height / vb_height if vb_height else 1.0
-    transforms = [_matrix_translate(-minx, -miny), _matrix_scale(sx, sy)]
+    transforms = [_matrix_scale(sx, sy), _matrix_translate(-minx, -miny)]
     return width, height, transforms
 
 
@@ -743,16 +743,24 @@ def validate_dimensions(options: StampOptions) -> tuple[float, float, float, flo
     return width, height, inner_width, inner_height
 
 
+def _resolve_size(options: StampOptions) -> float:
+    width = options.width if options.width is not None else options.size
+    height = options.height if options.height is not None else options.size
+    return max(width, height)
+
+
 def validate_size(options: StampOptions) -> float:
-    width, height, inner_width, inner_height = validate_dimensions(options)
-    return max(inner_width, inner_height) if width != height else inner_width
+    inner_size = _resolve_size(options) - 2 * options.border
+    if inner_size <= 0:
+        raise ValueError("size must be larger than twice border.")
+    return inner_size
 
 
 def build_vector_mesh(mask: np.ndarray, options: StampOptions) -> trimesh.Trimesh:
-    width, height, inner_width, inner_height = validate_dimensions(options)
+    inner_size = validate_size(options)
     geometry = trace_geometry(mask)
     minx, miny, maxx, maxy = geometry.bounds
-    scale = min(inner_width / max(maxx - minx, 1e-9), inner_height / max(maxy - miny, 1e-9))
+    scale = inner_size / max(maxx - minx, maxy - miny)
     if options.simplify > 0:
         geometry = make_valid(geometry.simplify(options.simplify / scale, preserve_topology=True))
     geometry = make_valid(scale_geometry(geometry, xfact=scale, yfact=scale, origin=(0, 0)))
@@ -761,17 +769,14 @@ def build_vector_mesh(mask: np.ndarray, options: StampOptions) -> trimesh.Trimes
         raise ValueError("Tracing removed all geometry. Lower min_area or simplify.")
     geometry = unary_union(polygons)
     minx, miny, maxx, maxy = geometry.bounds
-    art_w, art_h = max(maxx - minx, 0.0), max(maxy - miny, 0.0)
-    geometry = translate(
-        geometry,
-        xoff=options.border + (inner_width - art_w) / 2 - minx,
-        yoff=options.border + (inner_height - art_h) / 2 - miny,
-    )
-    outer = box(0, 0, width, height)
-    inner_box = box(options.border, options.border, width - options.border, height - options.border)
+    geometry = translate(geometry, xoff=options.border - minx, yoff=options.border - miny)
+    art_w, art_h = geometry.bounds[2] - geometry.bounds[0], geometry.bounds[3] - geometry.bounds[1]
+    outer = box(0, 0, art_w + 2 * options.border, art_h + 2 * options.border)
     relief_geometry = iter_polygons(geometry)
     if options.raised_border and options.border > 0:
-        relief_geometry.append(outer.difference(inner_box))
+        relief_geometry.append(
+            outer.difference(box(options.border, options.border, options.border + art_w, options.border + art_h))
+        )
     base_mesh = trimesh.creation.extrude_polygon(outer, options.base, engine="triangle")
     relief_meshes = [trimesh.creation.extrude_polygon(poly, options.relief, engine="triangle") for poly in relief_geometry]
     for mesh in relief_meshes:
@@ -784,19 +789,17 @@ def build_vector_mesh(mask: np.ndarray, options: StampOptions) -> trimesh.Trimes
 
 
 def build_voxel_mesh(mask: np.ndarray, options: StampOptions) -> trimesh.Trimesh:
-    width, height, inner_width, inner_height = validate_dimensions(options)
-    mask_h, mask_w = mask.shape
-    border_px_x = max(0, round(options.border * mask_w / inner_width))
-    border_px_y = max(0, round(options.border * mask_h / inner_height))
-    mask = np.pad(mask, ((border_px_y, border_px_y), (border_px_x, border_px_x)), constant_values=False)
+    inner_size = validate_size(options)
+    max_pixels = max(mask.shape)
+    border_px = max(0, round(options.border * max_pixels / inner_size))
+    xy_pitch = _resolve_size(options) / (max_pixels + 2 * border_px)
+    mask = np.pad(mask, border_px, constant_values=False)
     raised = mask.copy()
-    if options.raised_border:
-        if border_px_y > 0:
-            raised[:border_px_y, :] = True
-            raised[-border_px_y:, :] = True
-        if border_px_x > 0:
-            raised[:, :border_px_x] = True
-            raised[:, -border_px_x:] = True
+    if options.raised_border and border_px > 0:
+        raised[:border_px, :] = True
+        raised[-border_px:, :] = True
+        raised[:, :border_px] = True
+        raised[:, -border_px:] = True
     base_layers = max(1, round(options.base / options.layer))
     relief_layers = max(1, round(options.relief / options.layer))
     voxels = np.zeros((mask.shape[1], mask.shape[0], base_layers + relief_layers), dtype=bool)
@@ -804,7 +807,7 @@ def build_voxel_mesh(mask: np.ndarray, options: StampOptions) -> trimesh.Trimesh
     voxels[:, :, base_layers:] = raised.T[:, :, None]
     mesh = trimesh.voxel.ops.matrix_to_marching_cubes(
         voxels,
-        pitch=(width / mask.shape[1], height / mask.shape[0], options.layer),
+        pitch=(xy_pitch, xy_pitch, options.layer),
     )
     mesh.apply_translation(-mesh.bounds[0])
     return mesh

@@ -61,12 +61,12 @@ def test_module_cli_uses_legacy_size_fallback(tmp_path: Path) -> None:
 
 def test_cli_reports_validation_errors_cleanly() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "ink_print", str(SAMPLE), "--width", "2", "--height", "20", "--border", "2"],
+        [sys.executable, "-m", "ink_print", str(SAMPLE), "--width", "2", "--height", "2", "--border", "2"],
         cwd=ROOT,
         capture_output=True,
         text=True,
         check=False,
     )
     assert result.returncode == 2
-    assert result.stderr.startswith("error: width and height must each be larger than twice border.")
+    assert result.stderr.startswith("error: size must be larger than twice border.")
     assert "Traceback" not in result.stderr

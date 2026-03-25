@@ -19,11 +19,20 @@ def test_build_stamp_mesh_vector_is_watertight() -> None:
     assert round(float(max(mesh.extents)), 1) == 80.0
 
 
-def test_build_stamp_mesh_respects_rectangular_dimensions() -> None:
+def test_build_stamp_mesh_respects_max_dimension() -> None:
     mesh = build_stamp_mesh(SAMPLE, StampOptions(width=90.0, height=70.0))
     assert mesh.is_watertight
-    assert round(float(mesh.extents[0]), 1) == 90.0
-    assert round(float(mesh.extents[1]), 1) == 70.0
+    extents = sorted(float(value) for value in mesh.extents)
+    assert round(extents[-1], 1) == 90.0
+    assert extents[0] < 70.0
+
+
+def test_build_stamp_mesh_voxel_respects_max_dimension() -> None:
+    mesh = build_stamp_mesh(SAMPLE, StampOptions(mode="voxel", width=90.0, height=70.0))
+    assert mesh.is_watertight
+    extents = sorted(float(value) for value in mesh.extents)
+    assert round(extents[-1], 1) == 90.0
+    assert extents[0] < 70.0
 
 
 def test_build_stamp_mesh_uses_legacy_size_fallback() -> None:
@@ -101,3 +110,37 @@ def test_rasterize_svg_handles_rotated_ellipses(tmp_path: Path) -> None:
     image = _rasterize_svg(svg_path)
     assert image.getpixel((70, 70)) == 0
     assert image.getpixel((70, 50)) == 255
+
+
+def test_rasterize_svg_applies_nested_transforms_in_svg_order(tmp_path: Path) -> None:
+    svg_path = tmp_path / "nested-transform.svg"
+    svg_path.write_text(
+        """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g transform="scale(2)">
+            <rect x="0" y="0" width="10" height="10" transform="translate(20 0)" fill="black" />
+          </g>
+        </svg>
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    image = _rasterize_svg(svg_path)
+    assert image.getpixel((50, 10)) == 0
+    assert image.getpixel((30, 10)) == 255
+
+
+def test_rasterize_svg_applies_viewbox_offset_before_scaling(tmp_path: Path) -> None:
+    svg_path = tmp_path / "viewbox-offset.svg"
+    svg_path.write_text(
+        """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="10 10 20 20" width="40" height="40">
+          <rect x="10" y="10" width="10" height="10" fill="black" />
+        </svg>
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    image = _rasterize_svg(svg_path)
+    assert image.getpixel((5, 5)) == 0
+    assert image.getpixel((25, 5)) == 255

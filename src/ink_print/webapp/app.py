@@ -27,6 +27,7 @@ app = FastAPI(
 )
 
 DEFAULT_OPTIONS = CLI_DEFAULT_OPTIONS
+WEBAPP_IMPORT = "ink_print.webapp.app:app"
 
 
 @dataclass(slots=True)
@@ -135,8 +136,8 @@ def _render_preview_svg(geometry) -> str:
 
     return f"""
     <svg viewBox=\"0 0 {total_width:.2f} {total_height:.2f}\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Vector preview\">
-      <rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"#111\" />
-      <path d=\"{' '.join(paths)}\" fill=\"#e0e0e0\" fill-rule=\"evenodd\" stroke=\"#fff\" stroke-width=\"0.8\" stroke-linejoin=\"round\" />
+      <rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"#fff\" />
+      <path d=\"{' '.join(paths)}\" fill=\"#000\" fill-rule=\"evenodd\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linejoin=\"round\" />
     </svg>
     """.strip()
 
@@ -337,9 +338,11 @@ def download_model(token: str) -> FileResponse:
 
 def main() -> int:
     uvicorn.run(
-        app,
+        WEBAPP_IMPORT,
         host=os.environ.get("STAMPIFY_WEB_HOST", "127.0.0.1"),
         port=int(os.environ.get("STAMPIFY_WEB_PORT", "8000")),
         log_level=os.environ.get("STAMPIFY_WEB_LOG_LEVEL", "info"),
+        reload=True,
+        reload_dirs=[str(APP_DIR.parent.parent)],
     )
     return 0

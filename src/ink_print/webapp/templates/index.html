@@ -175,7 +175,7 @@
             <div id="workflow">
               <p class="text-secondary mb-2">Upload artwork, adjust the settings, and review the SVG preview right beneath the form before generating a 3D-printable stamp STL.</p>
               <div class="stepper mb-3">
-                <a class="stepper-step {% if view_stage == 'upload' %}is-active{% elif session is not none %}is-done{% endif %}" href="/">
+                <a class="stepper-step {% if view_stage == 'upload' %}is-active{% elif session is not none %}is-done{% endif %}" href="{% if session is not none %}{{ url_for('index') }}?token={{ session.token }}&view=upload{% else %}/{% endif %}">
                   <i class="ti ti-upload"></i>
                   <span>Upload</span>
                 </a>
@@ -205,6 +205,22 @@
                 {% endif %}
               </div>
 
+              {% if session is not none %}
+              <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                <div>
+                  <div class="fw-semibold">Session saved</div>
+                  <div class="text-secondary small">Back to upload keeps the current process alive. Use reset only when you want a blank slate.</div>
+                </div>
+                <form method="post" action="/reset" hx-post="/reset" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay" class="m-0">
+                  <input type="hidden" name="token" value="{{ session.token }}" />
+                  <button type="submit" class="btn btn-outline-danger">
+                    <i class="ti ti-trash me-1"></i>
+                    Reset to blank
+                  </button>
+                </form>
+              </div>
+              {% endif %}
+
               <div class="card mb-3">
                 <div class="card-body">
                   <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay" hx-validate="true" id="preview-form">
@@ -232,7 +248,7 @@
                     <div class="mb-2">
                       <h4 class="mb-2">Options</h4>
                       <div class="text-secondary small mb-3">
-                        Required fields are prefilled. Enter width, height, or both for the max dimensions; if only one is filled, that value becomes the effective max size.
+                        Required fields are prefilled.
                       </div>
                       {% set max_dimension_default = defaults.size if session is none else '' %}
                       <div class="row g-3">
@@ -264,10 +280,6 @@
                           <span class="form-hint">Higher = smoother, lower = more detail</span>
                         </div>
                         <div class="col-12 col-xl-6">
-                          <div class="mb-2 d-flex align-items-center gap-2">
-                            <label class="form-label mb-0" for="width-input">Max dimensions</label>
-                            <span class="required-indicator">Required: enter width, height, or both</span>
-                          </div>
                           <div class="row g-3">
                             <div class="col-12 col-md-6">
                               <label class="form-label" for="width-input">Max width</label>
@@ -284,7 +296,7 @@
                               </div>
                             </div>
                           </div>
-                          <span class="form-hint">If both are filled, the larger side becomes the stamp’s effective max size. If one is blank, the filled value is used.</span>
+                          <span class="form-hint">Required: enter width, height, or both. If both are filled, the larger side becomes the stamp’s effective max size. If one is blank, the filled value is used.</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
                           <label class="form-label d-flex align-items-center gap-2" for="border-input">
@@ -363,9 +375,9 @@
                         Generate STL
                       </button>
                     </form>
-                    <a class="btn btn-ghost-secondary" href="/">
+                    <a class="btn btn-ghost-secondary" href="{{ url_for('index') }}?token={{ session.token }}&view=upload">
                       <i class="ti ti-arrow-left me-1"></i>
-                      Start over
+                      Back to upload
                     </a>
                   </div>
                 </div>
@@ -385,9 +397,9 @@
                       <i class="ti ti-download me-1"></i>
                       Download STL
                     </a>
-                    <a class="btn btn-ghost-secondary" href="/">
+                    <a class="btn btn-ghost-secondary" href="{{ url_for('index') }}?token={{ session.token }}&view=upload">
                       <i class="ti ti-plus me-1"></i>
-                      New stamp
+                      Back to upload
                     </a>
                   </div>
                 </div>

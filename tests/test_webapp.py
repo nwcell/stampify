@@ -77,6 +77,12 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert "Generate STL" in preview_view.text
     assert "90.0 × 90.0 mm" in preview_view.text
 
+    upload_view = client.get(f"/?token={token}&view=upload")
+    assert upload_view.status_code == 200
+    assert "Session saved" in upload_view.text
+    assert "Reset to blank" in upload_view.text
+    assert "Generate STL" not in upload_view.text
+
     generated = client.post("/generate", data={"token": token})
     assert generated.status_code == 200
     assert "Result" in generated.text
@@ -87,6 +93,16 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert result_view.status_code == 200
     assert "Result" in result_view.text
     assert "Download STL" in result_view.text
+
+    reset_view = client.post("/reset", data={"token": token})
+    assert reset_view.status_code == 200
+    assert "Session saved" not in reset_view.text
+    assert "Reset to blank" not in reset_view.text
+    assert "Generate STL" not in reset_view.text
+
+    expired_generate = client.post("/generate", data={"token": token})
+    assert expired_generate.status_code == 200
+    assert "That preview session expired" in expired_generate.text
 
 
 def test_webapp_main_enables_reload_by_default(monkeypatch) -> None:

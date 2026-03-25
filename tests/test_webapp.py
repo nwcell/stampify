@@ -15,12 +15,11 @@ SAMPLE = ROOT / "sample" / "xmas-cowboy.jpeg"
 
 def _preview_payload() -> dict[str, object]:
     return {
-        "mode": "vector",
         "width": "90",
-        "height": "70",
-        "border": "2",
+        "height": "",
+        "border": "0.5",
         "base": "4",
-        "relief": "2",
+        "relief": "1",
         "threshold": "190",
         "resolution": "0",
         "simplify": "0.08",
@@ -43,8 +42,11 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert root.status_code == 200
     assert "Preview" in root.text
     assert "Stampify Studio" in root.text
-    assert f'value="{CLI_DEFAULT_OPTIONS.size}"' in root.text
-    assert root.text.count(f'value="{CLI_DEFAULT_OPTIONS.size}"') >= 2
+    assert f'value="{CLI_DEFAULT_OPTIONS.threshold}"' in root.text
+    assert f'value="{CLI_DEFAULT_OPTIONS.resolution}"' in root.text
+    assert f'value="{CLI_DEFAULT_OPTIONS.border}"' in root.text
+    assert f'value="{CLI_DEFAULT_OPTIONS.relief}"' in root.text
+    assert "width, height, or both" in root.text.lower()
 
     with SAMPLE.open("rb") as image:
         preview = client.post(
@@ -56,6 +58,7 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert "Generate STL" in preview.text
     assert "Preview" in preview.text
     assert "name=\"token\"" in preview.text
+    assert "90.0 × 90.0 mm" in preview.text
     assert '<rect x="0" y="0" width="100%" height="100%" fill="#fff" />' in preview.text
     assert 'fill="#000" fill-rule="evenodd" stroke="#000"' in preview.text
     assert "linearGradient" not in preview.text
@@ -70,6 +73,7 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert preview_view.status_code == 200
     assert "Preview" in preview_view.text
     assert "Generate STL" in preview_view.text
+    assert "90.0 × 90.0 mm" in preview_view.text
 
     generated = client.post("/generate", data={"token": token})
     assert generated.status_code == 200

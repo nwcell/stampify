@@ -16,7 +16,13 @@ from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 
 from ink_print.cli import DEFAULT_OPTIONS as CLI_DEFAULT_OPTIONS
-from ink_print.core import StampOptions, build_stamp_mesh_from_mask, load_mask, trace_geometry
+from ink_print.core import (
+    StampOptions,
+    build_stamp_mesh_from_mask,
+    load_mask,
+    trace_geometry,
+    validate_dimensions,
+)
 
 APP_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(APP_DIR / "templates"))
@@ -62,8 +68,16 @@ def _format_mm(value: float) -> str:
     return f"{value:.1f} mm"
 
 
+def _parse_optional_float(value: str | None) -> float | None:
+    if value is None:
+        return None
+    stripped = value.strip()
+    if not stripped:
+        return None
+    return float(stripped)
+
+
 def _build_options(
-    mode: Literal["vector", "voxel"],
     size: float | None,
     width: float | None,
     height: float | None,
@@ -77,14 +91,12 @@ def _build_options(
     invert: bool,
 ) -> StampOptions:
     return StampOptions(
-        mode=mode,
         size=size if size is not None else DEFAULT_OPTIONS.size,
         width=width if width is not None else DEFAULT_OPTIONS.width,
         height=height if height is not None else DEFAULT_OPTIONS.height,
         border=border if border is not None else DEFAULT_OPTIONS.border,
         base=base if base is not None else DEFAULT_OPTIONS.base,
         relief=relief if relief is not None else DEFAULT_OPTIONS.relief,
-        layer=DEFAULT_OPTIONS.layer,
         simplify=simplify if simplify is not None else DEFAULT_OPTIONS.simplify,
         min_area=DEFAULT_OPTIONS.min_area,
         threshold=threshold if threshold is not None else DEFAULT_OPTIONS.threshold,
@@ -177,12 +189,13 @@ def _render_page(
     view_stage: Literal["upload", "preview", "result"] | None = None,
 ) -> HTMLResponse:
     view_stage = view_stage or ("upload" if session is None else session.stage)
+    defaults = session.options if session is not None else DEFAULT_OPTIONS
     return TEMPLATES.TemplateResponse(
         request,
         "index.html",
         {
             "session": session,
-            "defaults": DEFAULT_OPTIONS,
+            "defaults": defaults,
             "error": error,
             "view_stage": view_stage,
         },
@@ -234,10 +247,9 @@ def index(
 async def preview(
     request: Request,
     artwork: UploadFile = File(...),
-    mode: Literal["vector", "voxel"] = Form("vector"),
     size: float = Form(DEFAULT_OPTIONS.size),
-    width: float | None = Form(DEFAULT_OPTIONS.width),
-    height: float | None = Form(DEFAULT_OPTIONS.height),
+    width: str | None = Form(None),
+    height: str | None = Form(None),
     border: float = Form(DEFAULT_OPTIONS.border),
     base: float = Form(DEFAULT_OPTIONS.base),
     relief: float = Form(DEFAULT_OPTIONS.relief),
@@ -247,7 +259,21 @@ async def preview(
     raised_border: bool = Form(DEFAULT_OPTIONS.raised_border),
     invert: bool = Form(DEFAULT_OPTIONS.invert),
 ) -> HTMLResponse:
-    options = _build_options(mode, size, width, height, border, base, relief, threshold, resolution, simplify, raised_border, invert)
+    try:
+        width_value = _parse_optional_float(width)
+        height_value = _parse_optional_float(height)
+    except ValueError:
+        return _render_page(request, error="Width and height must be valid numbers.")
+
+    if width_value is None and height_value is None:
+        return _render_page(request, error="Please enter at least one max dimension: width, height, or both.")
+
+    options = _build_options(size, width_value, height_value, border, base, relief, threshold, resolution, simplify, raised_border, invert)
+    try:
+        preview_width, preview_height, _, _ = validate_dimensions(options)
+    except ValueError as exc:
+        return _render_page(request, error=str(exc))
+
     workspace: Path | None = None
 
     try:
@@ -265,7 +291,7 @@ async def preview(
         "contours": str(len(_iter_polygons(geometry))),
         "area": f"{geometry.area:.2f} px²",
         "bounds": f"{geometry.bounds[2] - geometry.bounds[0]:.1f} px × {geometry.bounds[3] - geometry.bounds[1]:.1f} px",
-        "mode": options.mode,
+        "dimensions": f"{preview_width:.1f} × {preview_height:.1f} mm",
     }
     session = WebSession(
         token=token,
@@ -308,7 +334,6 @@ def generate(request: Request, token: str = Form(...)) -> HTMLResponse:
     session.result_info = {
         "dimensions": f"{mesh.extents[0]:.1f} × {mesh.extents[1]:.1f} × {mesh.extents[2]:.1f} mm",
         "size": _human_size(result_path.stat().st_size),
-        "mode": session.options.mode,
     }
     return _render_page(request, session=session, view_stage="result")
 

@@ -5,7 +5,6 @@ import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
 import numpy as np
 import trimesh
@@ -19,14 +18,12 @@ from skimage import measure
 
 @dataclass(slots=True)
 class StampOptions:
-    mode: Literal["vector", "voxel"] = "vector"
     size: float = 80.0
     width: float | None = None
     height: float | None = None
-    border: float = 2.0
+    border: float = 0.5
     base: float = 4.0
-    relief: float = 2.0
-    layer: float = 0.5
+    relief: float = 1.0
     simplify: float = 0.08
     min_area: float = 0.02
     threshold: int = 190
@@ -727,9 +724,13 @@ def trace_geometry(mask: np.ndarray):
 
 
 def _resolve_dimensions(options: StampOptions) -> tuple[float, float]:
-    width = options.width if options.width is not None else options.size
-    height = options.height if options.height is not None else options.size
-    return width, height
+    if options.width is not None and options.height is not None:
+        return options.width, options.height
+    if options.width is not None:
+        return options.width, options.width
+    if options.height is not None:
+        return options.height, options.height
+    return options.size, options.size
 
 
 def validate_dimensions(options: StampOptions) -> tuple[float, float, float, float]:
@@ -737,22 +738,19 @@ def validate_dimensions(options: StampOptions) -> tuple[float, float, float, flo
     inner_width = width - 2 * options.border
     inner_height = height - 2 * options.border
     if inner_width <= 0 or inner_height <= 0:
-        if options.width is None and options.height is None:
-            raise ValueError("size must be larger than twice border.")
-        raise ValueError("width and height must each be larger than twice border.")
+        raise ValueError("max dimension must be larger than twice border.")
     return width, height, inner_width, inner_height
 
 
 def _resolve_size(options: StampOptions) -> float:
-    width = options.width if options.width is not None else options.size
-    height = options.height if options.height is not None else options.size
+    width, height = _resolve_dimensions(options)
     return max(width, height)
 
 
 def validate_size(options: StampOptions) -> float:
     inner_size = _resolve_size(options) - 2 * options.border
     if inner_size <= 0:
-        raise ValueError("size must be larger than twice border.")
+        raise ValueError("max dimension must be larger than twice border.")
     return inner_size
 
 
@@ -788,34 +786,9 @@ def build_vector_mesh(mask: np.ndarray, options: StampOptions) -> trimesh.Trimes
     return merged
 
 
-def build_voxel_mesh(mask: np.ndarray, options: StampOptions) -> trimesh.Trimesh:
-    inner_size = validate_size(options)
-    max_pixels = max(mask.shape)
-    border_px = max(0, round(options.border * max_pixels / inner_size))
-    xy_pitch = _resolve_size(options) / (max_pixels + 2 * border_px)
-    mask = np.pad(mask, border_px, constant_values=False)
-    raised = mask.copy()
-    if options.raised_border and border_px > 0:
-        raised[:border_px, :] = True
-        raised[-border_px:, :] = True
-        raised[:, :border_px] = True
-        raised[:, -border_px:] = True
-    base_layers = max(1, round(options.base / options.layer))
-    relief_layers = max(1, round(options.relief / options.layer))
-    voxels = np.zeros((mask.shape[1], mask.shape[0], base_layers + relief_layers), dtype=bool)
-    voxels[:, :, :base_layers] = True
-    voxels[:, :, base_layers:] = raised.T[:, :, None]
-    mesh = trimesh.voxel.ops.matrix_to_marching_cubes(
-        voxels,
-        pitch=(xy_pitch, xy_pitch, options.layer),
-    )
-    mesh.apply_translation(-mesh.bounds[0])
-    return mesh
-
-
 def build_stamp_mesh_from_mask(mask: np.ndarray, options: StampOptions | None = None) -> trimesh.Trimesh:
     options = options or StampOptions()
-    return build_vector_mesh(mask, options) if options.mode == "vector" else build_voxel_mesh(mask, options)
+    return build_vector_mesh(mask, options)
 
 
 def build_stamp_mesh(image: str | Path, options: StampOptions | None = None) -> trimesh.Trimesh:

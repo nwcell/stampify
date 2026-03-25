@@ -68,5 +68,5 @@ def test_cli_reports_validation_errors_cleanly() -> None:
         check=False,
     )
     assert result.returncode == 2
-    assert result.stderr.startswith("error: size must be larger than twice border.")
+    assert result.stderr.startswith("error: max dimension must be larger than twice border.")
     assert "Traceback" not in result.stderr

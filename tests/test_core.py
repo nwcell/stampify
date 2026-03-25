@@ -27,12 +27,10 @@ def test_build_stamp_mesh_respects_max_dimension() -> None:
     assert extents[0] < 70.0
 
 
-def test_build_stamp_mesh_voxel_respects_max_dimension() -> None:
-    mesh = build_stamp_mesh(SAMPLE, StampOptions(mode="voxel", width=90.0, height=70.0))
+def test_build_stamp_mesh_uses_single_max_dimension_when_one_is_blank() -> None:
+    mesh = build_stamp_mesh(SAMPLE, StampOptions(width=90.0))
     assert mesh.is_watertight
-    extents = sorted(float(value) for value in mesh.extents)
-    assert round(extents[-1], 1) == 90.0
-    assert extents[0] < 70.0
+    assert round(float(max(mesh.extents)), 1) == 90.0
 
 
 def test_build_stamp_mesh_uses_legacy_size_fallback() -> None:
@@ -45,12 +43,16 @@ def test_validate_size_uses_the_larger_inner_dimension() -> None:
     assert validate_size(StampOptions(width=90.0, height=70.0, border=2.0)) == 86.0
 
 
+def test_validate_size_uses_single_max_dimension_when_one_is_blank() -> None:
+    assert validate_size(StampOptions(width=90.0, border=2.0)) == 86.0
+
+
 def test_validate_size_uses_legacy_size_fallback() -> None:
     assert validate_size(StampOptions(size=90.0, border=2.0)) == 86.0
 
 
 def test_write_stamp_writes_expected_file(tmp_path: Path) -> None:
-    output_path, mesh = write_stamp(SAMPLE, tmp_path / "stamp.stl", StampOptions(mode="voxel", resolution=300))
+    output_path, mesh = write_stamp(SAMPLE, tmp_path / "stamp.stl", StampOptions(resolution=300))
     assert output_path.exists()
     assert mesh.is_watertight
 

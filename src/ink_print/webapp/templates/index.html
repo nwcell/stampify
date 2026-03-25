@@ -83,6 +83,13 @@
         display: block;
       }
 
+      .required-indicator {
+        color: var(--tblr-danger);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .02em;
+      }
+
       .stepper {
         display: flex;
         gap: .5rem;
@@ -165,7 +172,7 @@
             {% endif %}
 
             <div id="workflow">
-              <p class="text-secondary mb-2">Upload artwork, preview the vector trace, then generate a 3D-printable stamp STL.</p>
+              <p class="text-secondary mb-2">Upload artwork, adjust the settings, and review the SVG preview right beneath the form before generating a 3D-printable stamp STL.</p>
               <div class="stepper mb-3">
                 <a class="stepper-step {% if view_stage == 'upload' %}is-active{% elif session is not none %}is-done{% endif %}" href="/">
                   <i class="ti ti-upload"></i>
@@ -197,10 +204,9 @@
                 {% endif %}
               </div>
 
-              {% if view_stage == 'upload' %}
-              <div class="card">
+              <div class="card mb-3">
                 <div class="card-body">
-                  <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" id="preview-form" hx-indicator="#loading-overlay">
+                  <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay" hx-validate="true" id="preview-form">
                     <div class="mb-3">
                       <label class="upload-zone" for="artwork-input" id="upload-zone">
                         <input id="artwork-input" type="file" name="artwork" accept="image/*,.svg" required />
@@ -222,83 +228,105 @@
                       </label>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2">
                       <h4 class="mb-2">Options</h4>
+                      <div class="text-secondary small mb-3">
+                        Required fields are prefilled. Enter width, height, or both for the max dimensions; if only one is filled, that value becomes the effective max size.
+                      </div>
                       <div class="row g-3">
                         <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Mode</label>
-                          <select class="form-select form-select-sm" name="mode">
-                            <option value="vector" selected>Vector</option>
-                            <option value="voxel">Voxel</option>
-                          </select>
-                          <span class="form-hint">Vector for clean art, voxel for complex images</span>
-                        </div>
-                        <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Threshold</label>
-                          <input class="form-control form-control-sm" type="number" name="threshold" value="190" step="1" min="0" max="255" />
+                          <label class="form-label d-flex align-items-center gap-2" for="threshold-input">
+                            Threshold
+                            <span class="required-indicator">Required</span>
+                          </label>
+                          <input class="form-control form-control-sm" id="threshold-input" type="number" name="threshold" value="{{ defaults.threshold }}" step="1" min="0" max="255" required />
                           <span class="form-hint">Lower = more detail, higher = less noise</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Resolution</label>
+                          <label class="form-label d-flex align-items-center gap-2" for="resolution-input">
+                            Resolution
+                            <span class="required-indicator">Required</span>
+                          </label>
                           <div class="input-group input-group-sm">
-                            <input class="form-control" type="number" name="resolution" value="0" step="1" min="0" />
+                            <input class="form-control" id="resolution-input" type="number" name="resolution" value="{{ defaults.resolution }}" step="1" min="0" required />
                             <span class="input-group-text">px</span>
                           </div>
                           <span class="form-hint">0 = original size</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Simplify</label>
-                          <input class="form-control form-control-sm" type="number" name="simplify" value="0.08" step="0.01" min="0" />
+                          <label class="form-label d-flex align-items-center gap-2" for="simplify-input">
+                            Simplify
+                            <span class="required-indicator">Required</span>
+                          </label>
+                          <input class="form-control form-control-sm" id="simplify-input" type="number" name="simplify" value="{{ defaults.simplify }}" step="0.01" min="0" required />
                           <span class="form-hint">Higher = smoother, lower = more detail</span>
                         </div>
-                        <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Max width</label>
-                          <div class="input-group input-group-sm">
-                            <input class="form-control" type="number" name="width" value="{{ defaults.width if defaults.width is not none else defaults.size }}" step="0.1" min="10" />
-                            <span class="input-group-text">mm</span>
+                        <div class="col-12 col-xl-6">
+                          <div class="mb-2 d-flex align-items-center gap-2">
+                            <label class="form-label mb-0" for="width-input">Max dimensions</label>
+                            <span class="required-indicator">Required: enter width, height, or both</span>
                           </div>
+                          <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                              <label class="form-label" for="width-input">Max width</label>
+                              <div class="input-group input-group-sm">
+                                <input class="form-control" id="width-input" type="number" name="width" value="{{ defaults.width if defaults.width is not none else '' }}" step="0.1" min="0" placeholder="Optional" />
+                                <span class="input-group-text">mm</span>
+                              </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                              <label class="form-label" for="height-input">Max height</label>
+                              <div class="input-group input-group-sm">
+                                <input class="form-control" id="height-input" type="number" name="height" value="{{ defaults.height if defaults.height is not none else '' }}" step="0.1" min="0" placeholder="Optional" />
+                                <span class="input-group-text">mm</span>
+                              </div>
+                            </div>
+                          </div>
+                          <span class="form-hint">If both are filled, the larger side becomes the stamp’s effective max size. If one is blank, the filled value is used.</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Max height</label>
+                          <label class="form-label d-flex align-items-center gap-2" for="border-input">
+                            Border
+                            <span class="required-indicator">Required</span>
+                          </label>
                           <div class="input-group input-group-sm">
-                            <input class="form-control" type="number" name="height" value="{{ defaults.height if defaults.height is not none else defaults.size }}" step="0.1" min="10" />
-                            <span class="input-group-text">mm</span>
-                          </div>
-                        </div>
-                        <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Border</label>
-                          <div class="input-group input-group-sm">
-                            <input class="form-control" type="number" name="border" value="2" step="0.1" min="0" />
+                            <input class="form-control" id="border-input" type="number" name="border" value="{{ defaults.border }}" step="0.1" min="0" required />
                             <span class="input-group-text">mm</span>
                           </div>
                           <span class="form-hint">Margin around artwork</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Base</label>
+                          <label class="form-label d-flex align-items-center gap-2" for="base-input">
+                            Base
+                            <span class="required-indicator">Required</span>
+                          </label>
                           <div class="input-group input-group-sm">
-                            <input class="form-control" type="number" name="base" value="4" step="0.1" min="0.1" />
+                            <input class="form-control" id="base-input" type="number" name="base" value="{{ defaults.base }}" step="0.1" min="0.1" required />
                             <span class="input-group-text">mm</span>
                           </div>
                           <span class="form-hint">Backing thickness</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
-                          <label class="form-label">Relief</label>
+                          <label class="form-label d-flex align-items-center gap-2" for="relief-input">
+                            Relief
+                            <span class="required-indicator">Required</span>
+                          </label>
                           <div class="input-group input-group-sm">
-                            <input class="form-control" type="number" name="relief" value="2" step="0.1" min="0.1" />
+                            <input class="form-control" id="relief-input" type="number" name="relief" value="{{ defaults.relief }}" step="0.1" min="0.1" required />
                             <span class="input-group-text">mm</span>
                           </div>
                           <span class="form-hint">Raised height</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
                           <label class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="raised_border" checked />
+                            <input class="form-check-input" type="checkbox" name="raised_border" {% if defaults.raised_border %}checked{% endif %} />
                             <span class="form-check-label">Raised border</span>
                           </label>
                           <span class="form-hint">Raise the outer frame</span>
                         </div>
                         <div class="col-6 col-md-4 col-xl-3">
                           <label class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="invert" />
+                            <input class="form-check-input" type="checkbox" name="invert" {% if defaults.invert %}checked{% endif %} />
                             <span class="form-check-label">Invert tones</span>
                           </label>
                           <span class="form-hint">For white-on-dark artwork</span>
@@ -314,17 +342,16 @@
                 </div>
               </div>
 
-              {% elif view_stage == 'preview' %}
+              {% if session is not none and view_stage == 'preview' %}
               <div class="card">
                 <div class="card-body">
                   <div class="svg-preview-frame mb-3 p-2">
                     <div>{{ session.preview_svg | safe }}</div>
                   </div>
                   <div class="d-flex flex-wrap gap-2 mb-3">
-                    <span class="badge">{{ session.preview_info.mode|capitalize }}</span>
                     <span class="badge">{{ session.preview_info.contours }} contours</span>
                     <span class="badge">{{ session.preview_info.area }}</span>
-                    <span class="badge">{{ session.options.width if session.options.width is not none else session.options.size }} &times; {{ session.options.height if session.options.height is not none else session.options.size }} mm</span>
+                    <span class="badge">{{ session.preview_info.dimensions }}</span>
                   </div>
                   <div class="action-buttons d-flex flex-wrap gap-2">
                     <form method="post" action="/generate" hx-post="/generate" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay">
@@ -342,7 +369,7 @@
                 </div>
               </div>
 
-              {% elif view_stage == 'result' %}
+              {% elif session is not none and view_stage == 'result' %}
               <div class="card">
                 <div class="card-body">
                   <div class="viewer-container mb-3" data-mesh-url="{{ url_for('mesh_view', token=session.token) }}"></div>
@@ -551,9 +578,43 @@
         showPreview();
       }
 
+      function mountDimensionValidation(form) {
+        const widthInput = form.querySelector('#width-input');
+        const heightInput = form.querySelector('#height-input');
+
+        if (!widthInput || !heightInput || form.dataset.dimensionReady === 'true') return;
+        form.dataset.dimensionReady = 'true';
+
+        function readValue(input) {
+          return (input.value || '').trim();
+        }
+
+        function validate() {
+          const hasWidth = readValue(widthInput) !== '';
+          const hasHeight = readValue(heightInput) !== '';
+          const message = hasWidth || hasHeight ? '' : 'Enter width, height, or both.';
+          widthInput.setCustomValidity(message);
+          heightInput.setCustomValidity(message);
+          return message === '';
+        }
+
+        widthInput.addEventListener('input', validate);
+        heightInput.addEventListener('input', validate);
+        form.addEventListener('submit', (event) => {
+          if (!validate()) {
+            event.preventDefault();
+            event.stopPropagation();
+            widthInput.reportValidity();
+          }
+        });
+
+        validate();
+      }
+
       function refreshViewers(root = document) {
         root.querySelectorAll('[data-mesh-url]').forEach((el) => mountViewer(el));
         root.querySelectorAll('#preview-form').forEach((form) => mountUploadZone(form));
+        root.querySelectorAll('#preview-form').forEach((form) => mountDimensionValidation(form));
       }
 
       document.addEventListener('DOMContentLoaded', () => refreshViewers());

@@ -5,14 +5,12 @@ from pathlib import Path
 
 from .core import StampOptions
 
-DEFAULT_MODE = "vector"
 DEFAULT_SIZE = 80.0
 DEFAULT_WIDTH = None
 DEFAULT_HEIGHT = None
-DEFAULT_BORDER = 2.0
+DEFAULT_BORDER = 0.5
 DEFAULT_BASE = 4.0
-DEFAULT_RELIEF = 2.0
-DEFAULT_LAYER = 0.5
+DEFAULT_RELIEF = 1.0
 DEFAULT_SIMPLIFY = 0.08
 DEFAULT_MIN_AREA = 0.02
 DEFAULT_THRESHOLD = 190
@@ -22,14 +20,12 @@ DEFAULT_INVERT = False
 DEFAULT_MIRROR = True
 
 DEFAULT_OPTIONS = StampOptions(
-    mode=DEFAULT_MODE,
     size=DEFAULT_SIZE,
     width=DEFAULT_WIDTH,
     height=DEFAULT_HEIGHT,
     border=DEFAULT_BORDER,
     base=DEFAULT_BASE,
     relief=DEFAULT_RELIEF,
-    layer=DEFAULT_LAYER,
     simplify=DEFAULT_SIMPLIFY,
     min_area=DEFAULT_MIN_AREA,
     threshold=DEFAULT_THRESHOLD,
@@ -46,18 +42,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("image", type=Path)
     parser.add_argument("-o", "--output", type=Path)
-    parser.add_argument("--mode", choices=("vector", "voxel"), default=DEFAULT_MODE, help="Geometry pipeline to use.")
     parser.add_argument("--size", type=float, default=DEFAULT_SIZE, help="Legacy square stamp size fallback, in mm, used when width/height are not provided.")
-    parser.add_argument("--width", type=float, default=DEFAULT_WIDTH, help="Maximum stamp width, in mm. Leave unset to use --size.")
-    parser.add_argument("--height", type=float, default=DEFAULT_HEIGHT, help="Maximum stamp height, in mm. Leave unset to use --size.")
+    parser.add_argument("--width", type=float, default=DEFAULT_WIDTH, help="Maximum stamp width, in mm. Leave unset to defer to the other dimension, or to --size if both are omitted.")
+    parser.add_argument("--height", type=float, default=DEFAULT_HEIGHT, help="Maximum stamp height, in mm. Leave unset to defer to the other dimension, or to --size if both are omitted.")
     parser.add_argument("--border", type=float, default=DEFAULT_BORDER, help="Target border width around the artwork, in mm.")
     parser.add_argument("--base", type=float, default=DEFAULT_BASE, help="Backing thickness under the raised artwork, in mm.")
     parser.add_argument("--relief", type=float, default=DEFAULT_RELIEF, help="Raised height of the inked areas, in mm.")
-    parser.add_argument("--layer", type=float, default=DEFAULT_LAYER, help="Z voxel size in mm for --mode voxel.")
-    parser.add_argument("--simplify", type=float, default=DEFAULT_SIMPLIFY, help="Path simplification tolerance in mm for --mode vector.")
+    parser.add_argument("--simplify", type=float, default=DEFAULT_SIMPLIFY, help="Path simplification tolerance in mm.")
     parser.add_argument("--min-area", type=float, default=DEFAULT_MIN_AREA, help="Discard traced islands smaller than this area, in mm^2.")
     parser.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD, help="Pixels darker than this become stamp features.")
-    parser.add_argument("--resolution", type=int, default=DEFAULT_RESOLUTION, help="Longest-side raster resolution for tracing or voxelization. Use 0 to keep the source resolution.")
+    parser.add_argument("--resolution", type=int, default=DEFAULT_RESOLUTION, help="Longest-side raster resolution for tracing. Use 0 to keep the source resolution.")
     parser.add_argument(
         "--raised-border",
         action=argparse.BooleanOptionalAction,
@@ -71,14 +65,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def namespace_to_options(args: argparse.Namespace) -> StampOptions:
     return StampOptions(
-        mode=args.mode,
         size=args.size if args.size is not None else DEFAULT_SIZE,
         width=args.width if args.width is not None else DEFAULT_WIDTH,
         height=args.height if args.height is not None else DEFAULT_HEIGHT,
         border=args.border if args.border is not None else DEFAULT_BORDER,
         base=args.base if args.base is not None else DEFAULT_BASE,
         relief=args.relief if args.relief is not None else DEFAULT_RELIEF,
-        layer=args.layer if args.layer is not None else DEFAULT_LAYER,
         simplify=args.simplify if args.simplify is not None else DEFAULT_SIMPLIFY,
         min_area=args.min_area if args.min_area is not None else DEFAULT_MIN_AREA,
         threshold=args.threshold if args.threshold is not None else DEFAULT_THRESHOLD,

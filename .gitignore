@@ -17,3 +17,4 @@ htmlcov/
 *.stl
 
 .DS_Store
+tmp

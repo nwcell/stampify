@@ -135,23 +135,8 @@ def _render_preview_svg(geometry) -> str:
 
     return f"""
     <svg viewBox=\"0 0 {total_width:.2f} {total_height:.2f}\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Vector preview\">
-      <defs>
-        <linearGradient id=\"stamp-gradient\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">
-          <stop offset=\"0%\" stop-color=\"#7c3aed\" />
-          <stop offset=\"100%\" stop-color=\"#22d3ee\" />
-        </linearGradient>
-        <filter id=\"preview-shadow\" x=\"-20%\" y=\"-20%\" width=\"140%\" height=\"140%\">
-          <feDropShadow dx=\"0\" dy=\"6\" stdDeviation=\"8\" flood-color=\"#000000\" flood-opacity=\"0.28\" />
-        </filter>
-        <pattern id=\"preview-grid\" width=\"24\" height=\"24\" patternUnits=\"userSpaceOnUse\">
-          <path d=\"M 24 0 L 0 0 0 24\" fill=\"none\" stroke=\"rgba(255,255,255,.07)\" stroke-width=\"1\" />
-        </pattern>
-      </defs>
-      <rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" rx=\"24\" fill=\"#101828\" />
-      <rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" rx=\"24\" fill=\"url(#preview-grid)\" opacity=\"0.8\" />
-      <g filter=\"url(#preview-shadow)\">
-        <path d=\"{' '.join(paths)}\" fill=\"url(#stamp-gradient)\" fill-rule=\"evenodd\" stroke=\"rgba(255,255,255,.95)\" stroke-width=\"1.6\" stroke-linejoin=\"round\" />
-      </g>
+      <rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"#111\" />
+      <path d=\"{' '.join(paths)}\" fill=\"#e0e0e0\" fill-rule=\"evenodd\" stroke=\"#fff\" stroke-width=\"0.8\" stroke-linejoin=\"round\" />
     </svg>
     """.strip()
 
@@ -250,8 +235,8 @@ async def preview(
     artwork: UploadFile = File(...),
     mode: Literal["vector", "voxel"] = Form("vector"),
     size: float = Form(DEFAULT_OPTIONS.size),
-    width: float = Form(DEFAULT_OPTIONS.width),
-    height: float = Form(DEFAULT_OPTIONS.height),
+    width: float | None = Form(DEFAULT_OPTIONS.width),
+    height: float | None = Form(DEFAULT_OPTIONS.height),
     border: float = Form(DEFAULT_OPTIONS.border),
     base: float = Form(DEFAULT_OPTIONS.base),
     relief: float = Form(DEFAULT_OPTIONS.relief),

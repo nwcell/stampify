@@ -7,8 +7,8 @@ from .core import StampOptions
 
 DEFAULT_MODE = "vector"
 DEFAULT_SIZE = 80.0
-DEFAULT_WIDTH = 80.0
-DEFAULT_HEIGHT = 80.0
+DEFAULT_WIDTH = None
+DEFAULT_HEIGHT = None
 DEFAULT_BORDER = 2.0
 DEFAULT_BASE = 4.0
 DEFAULT_RELIEF = 2.0
@@ -48,8 +48,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--mode", choices=("vector", "voxel"), default=DEFAULT_MODE, help="Geometry pipeline to use.")
     parser.add_argument("--size", type=float, default=DEFAULT_SIZE, help="Legacy square stamp size fallback, in mm, used when width/height are not provided.")
-    parser.add_argument("--width", type=float, default=DEFAULT_WIDTH, help="Maximum stamp width, in mm.")
-    parser.add_argument("--height", type=float, default=DEFAULT_HEIGHT, help="Maximum stamp height, in mm.")
+    parser.add_argument("--width", type=float, default=DEFAULT_WIDTH, help="Maximum stamp width, in mm. Leave unset to use --size.")
+    parser.add_argument("--height", type=float, default=DEFAULT_HEIGHT, help="Maximum stamp height, in mm. Leave unset to use --size.")
     parser.add_argument("--border", type=float, default=DEFAULT_BORDER, help="Target border width around the artwork, in mm.")
     parser.add_argument("--base", type=float, default=DEFAULT_BASE, help="Backing thickness under the raised artwork, in mm.")
     parser.add_argument("--relief", type=float, default=DEFAULT_RELIEF, help="Raised height of the inked areas, in mm.")

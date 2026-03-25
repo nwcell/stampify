@@ -173,6 +173,170 @@ def _sample_quadratic(
     return points
 
 
+def _close_svg_ring(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    ring = list(points)
+    if len(ring) >= 2 and ring[0] != ring[-1]:
+        ring.append(ring[0])
+    return ring
+
+
+def _svg_ring_area(points: list[tuple[float, float]]) -> float:
+    ring = _close_svg_ring(points)
+    if len(ring) < 4:
+        return 0.0
+
+    area = 0.0
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+        area += x1 * y2 - x2 * y1
+    return area / 2.0
+
+
+def _sample_svg_arc(
+    start: tuple[float, float],
+    rx: float,
+    ry: float,
+    rotation_degrees: float,
+    large_arc: bool,
+    sweep: bool,
+    end: tuple[float, float],
+) -> list[tuple[float, float]]:
+    if start == end:
+        return []
+
+    rx = abs(rx)
+    ry = abs(ry)
+    if rx == 0 or ry == 0:
+        return [end]
+
+    phi = math.radians(rotation_degrees % 360.0)
+    cos_phi = math.cos(phi)
+    sin_phi = math.sin(phi)
+
+    dx2 = (start[0] - end[0]) / 2.0
+    dy2 = (start[1] - end[1]) / 2.0
+    x1p = cos_phi * dx2 + sin_phi * dy2
+    y1p = -sin_phi * dx2 + cos_phi * dy2
+
+    rx_sq = rx * rx
+    ry_sq = ry * ry
+    x1p_sq = x1p * x1p
+    y1p_sq = y1p * y1p
+
+    radii_check = x1p_sq / rx_sq + y1p_sq / ry_sq
+    if radii_check > 1.0:
+        scale = math.sqrt(radii_check)
+        rx *= scale
+        ry *= scale
+        rx_sq = rx * rx
+        ry_sq = ry * ry
+
+    numerator = max(0.0, rx_sq * ry_sq - rx_sq * y1p_sq - ry_sq * x1p_sq)
+    denominator = rx_sq * y1p_sq + ry_sq * x1p_sq
+    if denominator == 0:
+        return [end]
+
+    sign = -1.0 if large_arc == sweep else 1.0
+    coef = sign * math.sqrt(numerator / denominator)
+    cxp = coef * (rx * y1p) / ry
+    cyp = coef * (-ry * x1p) / rx
+
+    cx = cos_phi * cxp - sin_phi * cyp + (start[0] + end[0]) / 2.0
+    cy = sin_phi * cxp + cos_phi * cyp + (start[1] + end[1]) / 2.0
+
+    def _vector_angle(ux: float, uy: float, vx: float, vy: float) -> float:
+        return math.atan2(ux * vy - uy * vx, ux * vx + uy * vy)
+
+    ux = (x1p - cxp) / rx
+    uy = (y1p - cyp) / ry
+    vx = (-x1p - cxp) / rx
+    vy = (-y1p - cyp) / ry
+    theta1 = math.atan2(uy, ux)
+    delta_theta = _vector_angle(ux, uy, vx, vy)
+    if not sweep and delta_theta > 0:
+        delta_theta -= 2.0 * math.pi
+    elif sweep and delta_theta < 0:
+        delta_theta += 2.0 * math.pi
+
+    segments = max(8, math.ceil(abs(delta_theta) / (math.pi / 12.0)))
+    points: list[tuple[float, float]] = []
+    for index in range(1, segments + 1):
+        theta = theta1 + delta_theta * (index / segments)
+        x = cos_phi * rx * math.cos(theta) - sin_phi * ry * math.sin(theta) + cx
+        y = sin_phi * rx * math.cos(theta) + cos_phi * ry * math.sin(theta) + cy
+        points.append((x, y))
+    return points
+
+
+def _sample_svg_ellipse(
+    cx: float,
+    cy: float,
+    rx: float,
+    ry: float,
+    transforms: list[tuple[float, float, float, float, float, float]],
+    segments: int = 96,
+) -> list[tuple[float, float]]:
+    points: list[tuple[float, float]] = []
+    for index in range(segments):
+        theta = (2.0 * math.pi * index) / segments
+        point = (cx + rx * math.cos(theta), cy + ry * math.sin(theta))
+        points.append(_apply_svg_transform(point, transforms))
+    return points
+
+
+def _svg_subpaths_to_geometry(
+    subpaths: list[tuple[list[tuple[float, float]], bool]],
+    fill_rule: str | None,
+):
+    polygons: list[tuple[Polygon, float]] = []
+    for points, _closed in subpaths:
+        ring = _close_svg_ring(points)
+        if len(ring) < 4:
+            continue
+        ring_area = _svg_ring_area(ring)
+        geometry = make_valid(Polygon(ring))
+        polygons.extend((poly, ring_area) for poly in iter_polygons(geometry))
+
+    if not polygons:
+        return GeometryCollection()
+
+    rule = (fill_rule or "nonzero").strip().lower()
+    if rule == "evenodd":
+        ordered = sorted((poly for poly, _ring_area in polygons), key=lambda poly: poly.area, reverse=True)
+        depths: list[int] = []
+        for index, poly in enumerate(ordered):
+            point = poly.representative_point()
+            parent = next((candidate for candidate in range(index) if ordered[candidate].contains(point)), None)
+            depths.append(0 if parent is None else depths[parent] + 1)
+
+        geometry = GeometryCollection()
+        for depth, poly in sorted(zip(depths, ordered), key=lambda item: (item[0], -item[1].area)):
+            geometry = geometry.union(poly) if depth % 2 == 0 else geometry.difference(poly)
+        return make_valid(geometry)
+
+    root_sign = 1.0
+    for _poly, ring_area in sorted(polygons, key=lambda item: item[0].area, reverse=True):
+        if ring_area != 0:
+            root_sign = 1.0 if ring_area > 0 else -1.0
+            break
+
+    geometry = GeometryCollection()
+    for poly, ring_area in sorted(polygons, key=lambda item: item[0].area, reverse=True):
+        geometry = geometry.union(poly) if ring_area * root_sign >= 0 else geometry.difference(poly)
+    return make_valid(geometry)
+
+
+def _draw_svg_geometry(mask: Image.Image, geometry) -> None:
+    drawer = ImageDraw.Draw(mask)
+    for poly in iter_polygons(make_valid(geometry)):
+        exterior = list(poly.exterior.coords)
+        if len(exterior) >= 3:
+            drawer.polygon(exterior, fill=1)
+        for interior in poly.interiors:
+            hole = list(interior.coords)
+            if len(hole) >= 3:
+                drawer.polygon(hole, fill=0)
+
+
 def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], bool]]:
     tokens: list[str | float] = []
     for command, number in _SVG_COMMAND_RE.findall(path_data):
@@ -346,11 +510,16 @@ def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], boo
         if opcode == "A":
             if index + 6 >= len(tokens) or isinstance(tokens[index + 6], str):
                 break
+            rx = float(tokens[index])
+            ry = float(tokens[index + 1])
+            rotation = float(tokens[index + 2])
+            large_arc = bool(float(tokens[index + 3]))
+            sweep = bool(float(tokens[index + 4]))
             end = (float(tokens[index + 5]), float(tokens[index + 6]))
             index += 7
             if not absolute:
                 end = (end[0] + current[0], end[1] + current[1])
-            points.append(end)
+            points.extend(_sample_svg_arc(current, rx, ry, rotation, large_arc, sweep, end))
             current = end
             last_cubic_control = None
             last_quadratic_control = None
@@ -422,17 +591,16 @@ def _draw_svg_element(mask: Image.Image, element: ET.Element, inherited: dict[st
             drawer.line(points + [points[0]], fill=1, width=max(1, round(_parse_svg_number(state.get("stroke-width"), 1.0))))
         return
 
-    if tag in {"circle", "ellipse"}:
+    if tag == "circle" or tag == "ellipse":
         cx = _parse_svg_number(element.attrib.get("cx"), 0.0)
         cy = _parse_svg_number(element.attrib.get("cy"), 0.0)
         rx = _parse_svg_number(element.attrib.get("r"), 0.0) if tag == "circle" else _parse_svg_number(element.attrib.get("rx"), 0.0)
         ry = rx if tag == "circle" else _parse_svg_number(element.attrib.get("ry"), rx)
-        if fill_enabled:
-            ellipse_box = transform_points([(cx - rx, cy - ry), (cx + rx, cy + ry)])
-            drawer.ellipse([ellipse_box[0], ellipse_box[1]], fill=1)
-        if stroke_enabled:
-            ellipse_box = transform_points([(cx - rx, cy - ry), (cx + rx, cy + ry)])
-            drawer.ellipse([ellipse_box[0], ellipse_box[1]], outline=1, width=max(1, round(_parse_svg_number(state.get("stroke-width"), 1.0))))
+        points = _sample_svg_ellipse(cx, cy, rx, ry, transforms)
+        if fill_enabled and len(points) >= 3:
+            drawer.polygon(points, fill=1)
+        if stroke_enabled and len(points) > 1:
+            drawer.line(points + [points[0]], fill=1, width=max(1, round(_parse_svg_number(state.get("stroke-width"), 1.0))))
         return
 
     if tag in {"polygon", "polyline"}:
@@ -458,12 +626,14 @@ def _draw_svg_element(mask: Image.Image, element: ET.Element, inherited: dict[st
         path_data = element.attrib.get("d", "")
         if not path_data.strip():
             return
-        for subpath_points, closed in _parse_svg_path(path_data):
-            points = transform_points(subpath_points)
-            if fill_enabled and (closed or len(points) > 2):
-                xor_fill(points)
-            if stroke_enabled and len(points) > 1:
-                drawer.line(points, fill=1, width=max(1, round(_parse_svg_number(state.get("stroke-width"), 1.0))))
+        subpaths = [(transform_points(subpath_points), closed) for subpath_points, closed in _parse_svg_path(path_data)]
+        if fill_enabled:
+            geometry = _svg_subpaths_to_geometry(subpaths, state.get("fill-rule"))
+            _draw_svg_geometry(mask, geometry)
+        if stroke_enabled:
+            for points, _closed in subpaths:
+                if len(points) > 1:
+                    drawer.line(points, fill=1, width=max(1, round(_parse_svg_number(state.get("stroke-width"), 1.0))))
 
 
 def _rasterize_svg(image_path: Path) -> Image.Image:

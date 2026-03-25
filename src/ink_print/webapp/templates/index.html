@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,1045 +11,369 @@
     <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/tabler-icons.min.css" rel="stylesheet" />
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <style>
-      :root {
-        color-scheme: dark;
-        --studio-bg: #070d19;
-        --studio-surface: rgba(12, 19, 33, 0.92);
-        --studio-surface-strong: rgba(8, 13, 24, 0.98);
-        --studio-border: rgba(255, 255, 255, 0.09);
-        --studio-border-strong: rgba(255, 255, 255, 0.15);
-        --studio-text: rgba(248, 250, 252, 0.96);
-        --studio-muted: rgba(226, 232, 240, 0.84);
-        --studio-accent: #8b5cf6;
-        --studio-accent-2: #06b6d4;
-        --studio-accent-3: #22c55e;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      html {
-        scroll-behavior: smooth;
-      }
-
-      body {
-        min-height: 100vh;
-        margin: 0;
-        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        color: var(--studio-text);
-        background:
-          radial-gradient(circle at top left, rgba(139, 92, 246, 0.24), transparent 28%),
-          radial-gradient(circle at top right, rgba(6, 182, 212, 0.18), transparent 25%),
-          radial-gradient(circle at bottom center, rgba(34, 197, 94, 0.1), transparent 22%),
-          linear-gradient(180deg, #050913 0%, #07101e 42%, #03060d 100%);
-      }
-
-      body::before,
-      body::after {
-        content: "";
-        position: fixed;
-        inset: 0;
-        pointer-events: none;
-        z-index: 0;
-      }
-
-      body::before {
-        background:
-          radial-gradient(circle at 12% 18%, rgba(139, 92, 246, 0.16), transparent 0 28%),
-          radial-gradient(circle at 82% 12%, rgba(6, 182, 212, 0.14), transparent 0 22%),
-          radial-gradient(circle at 50% 92%, rgba(255, 255, 255, 0.06), transparent 0 24%);
-        filter: blur(24px);
-      }
-
-      body::after {
-        opacity: 0.12;
-        background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-        background-size: 48px 48px;
-        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 88%);
-      }
-
-      .page {
+      .upload-zone {
         position: relative;
-        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 12rem;
+        padding: 1.5rem;
+        border: 2px dashed var(--tblr-border-color);
+        border-radius: var(--tblr-border-radius-lg);
+        cursor: pointer;
+        transition: border-color .15s, background .15s;
+        text-align: center;
       }
-
-      .studio-shell {
-        min-height: 100vh;
-        padding: 1rem 0 2rem;
+      .upload-zone:hover,
+      .upload-zone.is-dragover {
+        border-color: var(--tblr-primary);
+        background: rgba(var(--tblr-primary-rgb), .06);
       }
-
-      .studio-hero {
-        position: relative;
-        overflow: hidden;
-        border: 1px solid var(--studio-border);
-        border-radius: 1.6rem;
-        background: linear-gradient(140deg, rgba(20, 28, 46, 0.92), rgba(10, 15, 28, 0.94));
-        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
-      }
-
-      .studio-hero::before,
-      .studio-hero::after {
-        content: "";
+      .upload-zone input[type="file"] {
         position: absolute;
-        border-radius: 999px;
-        pointer-events: none;
-      }
-
-      .studio-hero::before {
-        inset: -8rem auto auto -10rem;
-        width: 22rem;
-        height: 22rem;
-        background: radial-gradient(circle, rgba(139, 92, 246, 0.22), transparent 66%);
-      }
-
-      .studio-hero::after {
-        inset: auto -4rem -10rem auto;
-        width: 24rem;
-        height: 24rem;
-        background: radial-gradient(circle, rgba(6, 182, 212, 0.18), transparent 68%);
-      }
-
-      .studio-hero-copy {
-        position: relative;
-        z-index: 1;
-        max-width: 58rem;
-      }
-
-      .studio-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.45rem 0.85rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.94);
-        font-size: 0.92rem;
-        backdrop-filter: blur(10px);
-      }
-
-      .studio-title {
-        letter-spacing: -0.06em;
-        line-height: 0.92;
-      }
-
-      .studio-subtitle {
-        max-width: 64ch;
-        color: var(--studio-muted);
-      }
-
-      .studio-muted {
-        color: var(--studio-muted) !important;
-      }
-
-      .studio-card,
-      .studio-card .card-body,
-      .studio-card .card-header {
-        color: var(--studio-text);
-      }
-
-      .studio-card .form-label,
-      .studio-card .form-check-label,
-      .studio-card .form-hint,
-      .studio-card .studio-fieldset-copy,
-      .studio-card .studio-upload-desc,
-      .studio-card .studio-upload-status,
-      .studio-card .studio-summary-list li,
-      .studio-card .small {
-        color: rgba(248, 250, 252, 0.9);
-      }
-
-      .studio-card .text-muted-studio,
-      .studio-card .studio-fieldset-copy,
-      .studio-card .studio-upload-desc,
-      .studio-card .form-hint {
-        color: rgba(226, 232, 240, 0.86) !important;
-      }
-
-      .studio-card .badge,
-      .studio-chip {
-        color: rgba(255, 255, 255, 0.94);
-      }
-
-      .studio-card .fw-semibold,
-      .studio-card .fw-bold,
-      .studio-card .card-title {
-        color: rgba(255, 255, 255, 0.98);
-      }
-
-      .studio-pill-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }
-
-      .studio-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.7rem 0.9rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.94);
-      }
-
-      .studio-stepper {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        gap: 0.8rem;
-      }
-
-      .studio-stage-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-bottom: 0.25rem;
-      }
-
-      .studio-stage-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.65rem;
-        padding: 0.85rem 1rem;
-        border-radius: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.05);
-        color: rgba(255, 255, 255, 0.94);
-        text-decoration: none;
-        transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
-      }
-
-      .studio-stage-link:hover,
-      .studio-stage-link:focus-visible {
-        transform: translateY(-1px);
-        border-color: rgba(6, 182, 212, 0.5);
-        background: rgba(255, 255, 255, 0.08);
-        color: white;
-      }
-
-      .studio-stage-link.is-active {
-        border-color: rgba(6, 182, 212, 0.6);
-        background: linear-gradient(145deg, rgba(6, 182, 212, 0.18), rgba(139, 92, 246, 0.16));
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-      }
-
-      .studio-stage-link.is-disabled {
-        opacity: 0.45;
-        pointer-events: none;
-      }
-
-      .studio-stage-link strong {
-        display: block;
-      }
-
-      .studio-stage-link span {
-        display: block;
-        color: rgba(226, 232, 240, 0.86);
-        font-size: 0.86rem;
-      }
-
-      .studio-step {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.85rem;
-        padding: 0.95rem 1rem;
-        border-radius: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.035);
-      }
-
-      .studio-step.active {
-        border-color: rgba(6, 182, 212, 0.42);
-        background: linear-gradient(145deg, rgba(6, 182, 212, 0.14), rgba(139, 92, 246, 0.14));
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-      }
-
-      .studio-step-number {
-        width: 2.25rem;
-        height: 2.25rem;
-        border-radius: 0.8rem;
-        display: grid;
-        place-items: center;
-        flex: none;
-        font-weight: 800;
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.95), rgba(6, 182, 212, 0.95));
-        box-shadow: 0 8px 18px rgba(6, 182, 212, 0.2);
-      }
-
-      .studio-step-number.is-muted {
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: none;
-      }
-
-      .studio-step-copy {
-        display: grid;
-        gap: 0.15rem;
-      }
-
-      .studio-checklist {
-        display: grid;
-        gap: 0.75rem;
-      }
-
-      .studio-check-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.85rem;
-        padding: 0.9rem 1rem;
-        border-radius: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.035);
-        color: rgba(255, 255, 255, 0.95);
-      }
-
-      .studio-icon-chip {
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: 0.85rem;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(145deg, rgba(139, 92, 246, 0.95), rgba(6, 182, 212, 0.9));
-        color: white;
-        flex: none;
-        box-shadow: 0 10px 20px rgba(6, 182, 212, 0.15);
-      }
-
-      .studio-upload-note {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-      }
-
-      .studio-card {
-        background: var(--studio-surface);
-        border: 1px solid var(--studio-border);
-        border-radius: 1.35rem;
-        backdrop-filter: blur(18px);
-        box-shadow: 0 22px 56px rgba(0, 0, 0, 0.28);
-        overflow: hidden;
-      }
-
-      .card-header {
-        background: transparent;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        gap: 1rem;
-      }
-
-      .card-title {
-        letter-spacing: -0.03em;
-      }
-
-      .studio-grid-preview {
-        background:
-          linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-        background-size: 24px 24px;
-      }
-
-      .studio-preview-frame {
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(5, 10, 20, 0.82);
-        border-radius: 1rem;
-        overflow: hidden;
-      }
-
-      .studio-svg-preview {
+        inset: 0;
         width: 100%;
-        height: auto;
-        display: block;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 2;
+      }
+      .upload-zone-content {
+        pointer-events: none;
+        z-index: 1;
+      }
+      .upload-zone.has-preview .upload-zone-prompt { display: none; }
+      .upload-zone:not(.has-preview) .upload-zone-preview { display: none; }
+      .upload-zone-preview img {
+        max-height: 10rem;
+        max-width: 100%;
+        object-fit: contain;
+        border-radius: var(--tblr-border-radius);
+      }
+      .upload-zone-clear {
+        pointer-events: auto;
+        z-index: 3;
+        position: relative;
       }
 
-      .studio-viewer {
+      .viewer-container {
         width: 100%;
-        height: clamp(22rem, 48vw, 34rem);
-        border-radius: 1rem;
+        min-height: 250px;
+        height: clamp(16rem, 50vh, 32rem);
+        border-radius: var(--tblr-border-radius-lg);
         overflow: hidden;
-        background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.13), transparent 48%), #07101f;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #1a1a2e;
       }
-
-      .studio-viewer canvas {
+      .viewer-container canvas {
         display: block;
         width: 100% !important;
         height: 100% !important;
       }
 
-      .studio-upload-zone {
-        position: relative;
-        display: block;
-        min-height: 14rem;
-        padding: 1.25rem;
-        border-radius: 1.15rem;
-        border: 1px dashed rgba(255, 255, 255, 0.16);
-        background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
-        cursor: pointer;
-        transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      .svg-preview-frame {
+        border-radius: var(--tblr-border-radius-lg);
+        overflow: hidden;
+        background: #111;
+        min-height: 250px;
       }
-
-      .studio-upload-zone:hover,
-      .studio-upload-zone.is-dragover {
-        border-color: rgba(6, 182, 212, 0.55);
-        background: linear-gradient(160deg, rgba(6, 182, 212, 0.12), rgba(139, 92, 246, 0.1));
-        transform: translateY(-1px);
-        box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
-      }
-
-      .studio-upload-zone input[type="file"] {
-        position: absolute;
-        inset: 0;
+      .svg-preview-frame svg {
         width: 100%;
-        height: 100%;
-        z-index: 2;
-        opacity: 0;
-        cursor: pointer;
+        height: auto;
+        display: block;
       }
 
-      .studio-upload-content {
-        position: relative;
-        z-index: 1;
-        display: grid;
-        gap: 1rem;
+      .stepper {
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+      }
+      .stepper-step {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .35rem .75rem;
+        border-radius: var(--tblr-border-radius);
+        font-size: .85rem;
+        font-weight: 500;
+        color: var(--tblr-secondary);
+        text-decoration: none;
+      }
+      .stepper-step.is-active {
+        background: var(--tblr-primary);
+        color: #fff;
+      }
+      .stepper-step.is-done {
+        color: var(--tblr-body-color);
+      }
+      .stepper-step.is-disabled {
+        opacity: .4;
         pointer-events: none;
-        align-content: start;
+      }
+      .stepper-divider {
+        color: var(--tblr-secondary);
+        font-size: .75rem;
       }
 
-      .studio-upload-topline {
-        display: flex;
-        align-items: center;
-        gap: 0.9rem;
-      }
-
-      .studio-upload-icon {
-        width: 3rem;
-        height: 3rem;
-        border-radius: 1rem;
-        display: grid;
-        place-items: center;
-        color: white;
-        background: linear-gradient(135deg, rgba(139, 92, 246, 0.98), rgba(6, 182, 212, 0.92));
-        box-shadow: 0 10px 24px rgba(6, 182, 212, 0.22);
-        flex: none;
-      }
-
-      .studio-upload-meta {
-        display: grid;
-        gap: 0.3rem;
-      }
-
-      .studio-upload-title {
-        font-size: 1.15rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-      }
-
-      .studio-upload-desc {
-        color: var(--studio-muted);
-        line-height: 1.55;
-      }
-
-      .studio-upload-status {
-        padding: 0.85rem 0.95rem;
-        border-radius: 0.85rem;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.94);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        word-break: break-word;
-      }
-
-      .studio-upload-status span:last-child {
-        color: rgba(255, 255, 255, 0.92);
-      }
-
-      .studio-upload-status .studio-file-name {
-        color: rgba(255, 255, 255, 0.98);
-      }
-
-      .studio-input-grid {
-        display: grid;
-        gap: 1rem;
-      }
-
-      .studio-fieldset {
-        padding: 1rem;
-        border-radius: 1.1rem;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.05);
-      }
-
-      .studio-fieldset-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 0.9rem;
-      }
-
-      .studio-fieldset-title {
-        font-weight: 800;
-        letter-spacing: -0.03em;
-      }
-
-      .studio-fieldset-copy {
-        color: rgba(226, 232, 240, 0.82);
-        font-size: 0.95rem;
-      }
-
-      .studio-kpi {
-        height: 100%;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.055);
-        border-radius: 1rem;
-        padding: 1rem;
-      }
-
-      .studio-summary-list {
-        display: grid;
-        gap: 0.7rem;
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
-
-      .studio-summary-list li {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.8rem;
-        color: rgba(255, 255, 255, 0.94);
-      }
-
-      .studio-summary-list i {
-        color: #22d3ee;
-        margin-top: 0.15rem;
-      }
-
-      .studio-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        padding: 0.35rem 0.6rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.94);
-        font-size: 0.84rem;
-      }
-
-      .btn-studio {
-        position: relative;
-        isolation: isolate;
-        background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
-        border: 0;
-        box-shadow: 0 14px 28px rgba(6, 182, 212, 0.22);
-      }
-
-      .btn-studio:hover,
-      .btn-studio:focus-visible {
-        transform: translateY(-1px);
-        box-shadow: 0 18px 34px rgba(6, 182, 212, 0.28);
-        color: white;
-      }
-
-      .btn-soft {
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: white;
-      }
-
-      .btn-soft:hover,
-      .btn-soft:focus-visible {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.18);
-        color: white;
-      }
-
-      .form-control,
-      .form-select {
-        min-height: 3rem;
-        border-radius: 0.9rem;
-        background-color: rgba(255, 255, 255, 0.06) !important;
-        border-color: rgba(255, 255, 255, 0.14) !important;
-        color: rgba(255, 255, 255, 0.98) !important;
-      }
-
-      .form-control:focus,
-      .form-select:focus {
-        border-color: rgba(6, 182, 212, 0.65) !important;
-        box-shadow: 0 0 0 0.22rem rgba(6, 182, 212, 0.18) !important;
-      }
-
-      .form-control::placeholder {
-        color: rgba(255, 255, 255, 0.54);
-      }
-
-      .form-range::-webkit-slider-thumb {
-        background: #22d3ee;
-      }
-
-      .form-range::-moz-range-thumb {
-        background: #22d3ee;
-      }
-
-      .text-muted-studio {
-        color: var(--studio-muted) !important;
-      }
-
-      .preview-badges .badge {
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.96);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-      }
-
-      .htmx-request .studio-submit-label {
-        opacity: 0;
-      }
-
-      .htmx-request .studio-submit-busy {
-        opacity: 1;
-        transform: translateY(0);
-      }
-
-      .studio-submit-busy {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        opacity: 0;
-        transform: translateY(0.15rem);
-        transition: opacity 160ms ease, transform 160ms ease;
-        position: absolute;
+      .spinner-overlay {
+        display: none;
+        position: fixed;
         inset: 0;
+        z-index: 1050;
+        background: rgba(30, 41, 59, .85);
+        align-items: center;
         justify-content: center;
+        flex-direction: column;
+        gap: .75rem;
+      }
+      .spinner-overlay.htmx-request {
+        display: flex;
       }
 
-      .studio-submit-label {
-        transition: opacity 160ms ease;
-      }
-
-      @media (max-width: 991.98px) {
-        .studio-shell {
-          padding-top: 0.75rem;
-        }
-
-        .studio-title {
-          line-height: 0.98;
-        }
+      @media (max-width: 767.98px) {
+        .stepper-step span { display: none; }
+        .action-buttons .btn { width: 100%; }
       }
     </style>
   </head>
   <body>
-    <div class="page studio-shell">
-      <div class="container-xl py-4 py-lg-5">
-        <div class="row g-4">
-          <div class="col-12">
-            <div class="card studio-card studio-hero">
-              <div class="card-body p-4 p-lg-5 position-relative">
-                <div class="d-flex flex-wrap justify-content-between gap-3 align-items-start">
-                  <div class="me-lg-5" style="max-width: 56rem;">
-                    <div class="studio-badge mb-3">
-                      <i class="ti ti-sparkles"></i>
-                      Guided vector preview and 3D review
-                    </div>
-                    <h1 class="display-5 fw-bolder studio-title mb-3">Stampify Studio</h1>
-                    <p class="lead studio-muted mb-0">
-                      Upload artwork, review the traced vector, and generate an STL with an interactive 3D preview.
-                      Built with FastAPI, HTMX, and Tabler CSS for a polished experience.
-                    </p>
-                    <div class="studio-pill-row mt-4">
-                      <span class="studio-pill"><i class="ti ti-upload"></i> Drop in artwork</span>
-                      <span class="studio-pill"><i class="ti ti-vector-triangle"></i> Review the trace</span>
-                      <span class="studio-pill"><i class="ti ti-cube-send"></i> Export the STL</span>
-                    </div>
-                  </div>
-                  <div class="d-flex flex-column gap-2">
-                    <div class="studio-badge"><i class="ti ti-bolt"></i> FastAPI + HTMX</div>
-                    <div class="studio-badge"><i class="ti ti-palette"></i> Tabler CSS</div>
-                    <div class="studio-badge"><i class="ti ti-cube"></i> Three.js viewer</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div class="page">
+      <header class="navbar navbar-expand-md d-print-none">
+        <div class="container-xl">
+          <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-btn pe-0 pe-md-3 mb-0">
+            <i class="ti ti-stamp me-2"></i>
+            Stampify Studio
+          </h1>
+          <div class="navbar-nav flex-row order-md-last">
+            <span class="nav-link text-secondary d-none d-md-block">Artwork &rarr; Stamp STL</span>
           </div>
+        </div>
+      </header>
 
-          {% if error %}
-          <div class="col-12">
-            <div class="alert alert-danger alert-dismissible" role="alert">
-              <div class="d-flex align-items-center">
-                <span class="avatar avatar-sm me-3 bg-danger text-white"><i class="ti ti-alert-triangle"></i></span>
-                <div>
-                  <div class="fw-bold">Something needs attention</div>
-                  <div>{{ error }}</div>
-                </div>
+      <div class="page-wrapper">
+        <div class="page-body">
+          <div class="container-xl">
+
+            {% if error %}
+            <div class="alert alert-danger alert-dismissible mb-3" role="alert">
+              <div class="d-flex">
+                <div><i class="ti ti-alert-triangle me-2"></i></div>
+                <div>{{ error }}</div>
               </div>
+              <a class="btn-close" data-bs-dismiss="alert" aria-label="Close"></a>
             </div>
-          </div>
-          {% endif %}
+            {% endif %}
 
-          <div id="workflow" class="col-12">
-            <div class="studio-stage-nav">
-              <a class="studio-stage-link {% if view_stage == 'upload' %}is-active{% endif %}" href="/">
-                <i class="ti ti-upload"></i>
-                <div>
-                  <strong>Upload</strong>
-                  <span>Choose your source artwork</span>
-                </div>
-              </a>
-              {% if session is not none %}
-              <a class="studio-stage-link {% if view_stage == 'preview' %}is-active{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=preview">
-                <i class="ti ti-vector-triangle"></i>
-                <div>
-                  <strong>Vector preview</strong>
-                  <span>Review the traced outline</span>
-                </div>
-              </a>
-              {% if session.result_path is not none %}
-              <a class="studio-stage-link {% if view_stage == 'result' %}is-active{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=result">
-                <i class="ti ti-cube"></i>
-                <div>
-                  <strong>3D preview</strong>
-                  <span>Inspect the generated STL</span>
-                </div>
-              </a>
-              {% else %}
-              <span class="studio-stage-link is-disabled" aria-disabled="true">
-                <i class="ti ti-cube"></i>
-                <div>
-                  <strong>3D preview</strong>
-                  <span>Available after generation</span>
-                </div>
-              </span>
-              {% endif %}
-              {% endif %}
-            </div>
+            <div id="workflow">
+              <p class="text-secondary mb-2">Upload artwork, preview the vector trace, then generate a 3D-printable stamp STL.</p>
+              <div class="stepper mb-3">
+                <a class="stepper-step {% if view_stage == 'upload' %}is-active{% elif session is not none %}is-done{% endif %}" href="/">
+                  <i class="ti ti-upload"></i>
+                  <span>Upload</span>
+                </a>
+                <span class="stepper-divider"><i class="ti ti-chevron-right"></i></span>
+                {% if session is not none %}
+                <a class="stepper-step {% if view_stage == 'preview' %}is-active{% elif session.result_path is not none %}is-done{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=preview">
+                  <i class="ti ti-vector-triangle"></i>
+                  <span>Preview</span>
+                </a>
+                {% else %}
+                <span class="stepper-step is-disabled">
+                  <i class="ti ti-vector-triangle"></i>
+                  <span>Preview</span>
+                </span>
+                {% endif %}
+                <span class="stepper-divider"><i class="ti ti-chevron-right"></i></span>
+                {% if session is not none and session.result_path is not none %}
+                <a class="stepper-step {% if view_stage == 'result' %}is-active{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=result">
+                  <i class="ti ti-cube"></i>
+                  <span>Result</span>
+                </a>
+                {% else %}
+                <span class="stepper-step is-disabled">
+                  <i class="ti ti-cube"></i>
+                  <span>Result</span>
+                </span>
+                {% endif %}
+              </div>
 
-            {% if view_stage == 'upload' %}
-            <div class="row g-4">
-              <div class="col-12 col-lg-7">
-                <div class="card studio-card studio-step">
-                  <div class="card-header">
-                    <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-upload me-2"></i>Upload your artwork</div>
-                      <div class="text-muted-studio">Pick a high-contrast image to trace into a stamp preview.</div>
+              {% if view_stage == 'upload' %}
+              <div class="card">
+                <div class="card-body">
+                  <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" id="preview-form" hx-indicator="#loading-overlay">
+                    <div class="mb-3">
+                      <label class="upload-zone" for="artwork-input" id="upload-zone">
+                        <input id="artwork-input" type="file" name="artwork" accept="image/*,.svg" required />
+                        <div class="upload-zone-content">
+                          <div class="upload-zone-prompt">
+                            <div class="mb-2"><i class="ti ti-cloud-upload" style="font-size:2rem;"></i></div>
+                            <div class="fw-semibold">Drop image here or browse</div>
+                            <div class="text-secondary mt-1">High-contrast black &amp; white works best</div>
+                            <div class="text-secondary mt-2" style="font-size:.8rem;">PNG &middot; JPG &middot; SVG</div>
+                          </div>
+                          <div class="upload-zone-preview">
+                            <img id="upload-thumb" src="" alt="Selected artwork" />
+                            <div class="mt-2">
+                              <span class="fw-semibold" data-file-name></span>
+                              <button type="button" class="btn btn-sm btn-ghost-secondary ms-2 upload-zone-clear" id="upload-clear"><i class="ti ti-x"></i></button>
+                            </div>
+                          </div>
+                        </div>
+                      </label>
                     </div>
-                  </div>
-                  <div class="card-body">
-                    <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" class="vstack gap-4" id="preview-form">
-                      <div class="studio-fieldset">
-                        <div class="studio-fieldset-header">
-                          <div>
-                            <div class="studio-fieldset-title">Artwork file</div>
-                            <div class="studio-fieldset-copy">Pick a clean, high-contrast source image to trace.</div>
-                          </div>
-                          <span class="studio-chip"><i class="ti ti-photo"></i> PNG, JPG, SVG</span>
+
+                    <div class="mb-3">
+                      <h4 class="mb-2">Options</h4>
+                      <div class="row g-3">
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Mode</label>
+                          <select class="form-select form-select-sm" name="mode">
+                            <option value="vector" selected>Vector</option>
+                            <option value="voxel">Voxel</option>
+                          </select>
+                          <span class="form-hint">Vector for clean art, voxel for complex images</span>
                         </div>
-
-                        <label class="studio-upload-zone" for="artwork-input">
-                          <input id="artwork-input" class="form-control form-control-lg" type="file" name="artwork" accept="image/*,.svg" required />
-                          <div class="studio-upload-content">
-                            <div class="studio-upload-topline">
-                              <div class="studio-upload-icon"><i class="ti ti-cloud-upload"></i></div>
-                              <div class="studio-upload-meta">
-                                <div class="studio-upload-title">Drop an image here or browse</div>
-                                <div class="studio-upload-desc">Black-and-white logos, artwork, and silhouettes tend to trace best.</div>
-                              </div>
-                            </div>
-                            <div class="studio-upload-status">
-                              <span>Selected file</span>
-                              <span class="studio-file-name" data-file-name>Nothing selected yet</span>
-                            </div>
-                            <div class="studio-upload-note">
-                              <span class="studio-chip"><i class="ti ti-eye-check"></i> Strong contrast</span>
-                              <span class="studio-chip"><i class="ti ti-mood-smile"></i> Simple shapes</span>
-                            </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Threshold</label>
+                          <input class="form-control form-control-sm" type="number" name="threshold" value="190" step="1" min="0" max="255" />
+                          <span class="form-hint">Lower = more detail, higher = less noise</span>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Resolution</label>
+                          <div class="input-group input-group-sm">
+                            <input class="form-control" type="number" name="resolution" value="0" step="1" min="0" />
+                            <span class="input-group-text">px</span>
                           </div>
-                        </label>
-
-                        <div class="form-hint text-muted-studio mt-2">The app keeps your uploaded artwork and traces it into a preview before any STL is generated.</div>
-                      </div>
-
-                      <div class="row g-4">
-                        <div class="col-12 col-xl-7">
-                          <div class="studio-fieldset h-100">
-                            <div class="studio-fieldset-header">
-                              <div>
-                                <div class="studio-fieldset-title">Trace tuning</div>
-                                <div class="studio-fieldset-copy">Adjust how the source image is simplified into a vector outline.</div>
-                              </div>
-                            </div>
-
-                            <div class="row g-3">
-                              <div class="col-12 col-md-6">
-                                <label class="form-label">Mode</label>
-                                <select class="form-select" name="mode">
-                                  <option value="vector" selected>Vector preview</option>
-                                  <option value="voxel">Voxel fallback</option>
-                                </select>
-                                <div class="form-hint text-muted-studio mt-1">Vector mode traces clean outlines; voxel mode is a more literal fallback for difficult art.</div>
-                              </div>
-                              <div class="col-12 col-md-6">
-                                <label class="form-label">Threshold</label>
-                                <input class="form-control" type="number" name="threshold" value="190" step="1" min="0" max="255" />
-                                <div class="form-hint text-muted-studio mt-1">Lower this if thin details disappear; raise it if the preview picks up too much background.</div>
-                              </div>
-                              <div class="col-12 col-md-6">
-                                <label class="form-label">Resolution</label>
-                                <input class="form-control" type="number" name="resolution" value="0" step="1" min="0" />
-                                <div class="form-hint text-muted-studio mt-1">Leave at `0` to preserve the source size, or set a fixed pixel width for consistent tracing.</div>
-                              </div>
-                              <div class="col-12 col-md-6">
-                                <label class="form-label">Simplify</label>
-                                <input class="form-control" type="number" name="simplify" value="0.08" step="0.01" min="0" />
-                                <div class="form-hint text-muted-studio mt-1">Increase this to reduce tiny path noise; decrease it to preserve more edge detail.</div>
-                              </div>
-                            </div>
+                          <span class="form-hint">0 = original size</span>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Simplify</label>
+                          <input class="form-control form-control-sm" type="number" name="simplify" value="0.08" step="0.01" min="0" />
+                          <span class="form-hint">Higher = smoother, lower = more detail</span>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Max width</label>
+                          <div class="input-group input-group-sm">
+                            <input class="form-control" type="number" name="width" value="{{ defaults.width if defaults.width is not none else defaults.size }}" step="0.1" min="10" />
+                            <span class="input-group-text">mm</span>
                           </div>
                         </div>
-
-                        <div class="col-12 col-xl-5">
-                          <div class="studio-fieldset h-100">
-                            <div class="studio-fieldset-header">
-                              <div>
-                                <div class="studio-fieldset-title">Stamp geometry</div>
-                                <div class="studio-fieldset-copy">Control the physical size and the raised structure.</div>
-                              </div>
-                            </div>
-
-                            <div class="row g-3">
-                              <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-label">Max width</label>
-                                <input class="form-control" type="number" name="width" value="{{ defaults.width if defaults.width is not none else defaults.size }}" step="0.1" min="10" />
-                                <div class="form-hint text-muted-studio mt-1">This caps the stamp width in millimeters.</div>
-                              </div>
-                              <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-label">Max height</label>
-                                <input class="form-control" type="number" name="height" value="{{ defaults.height if defaults.height is not none else defaults.size }}" step="0.1" min="10" />
-                                <div class="form-hint text-muted-studio mt-1">This caps the stamp height in millimeters.</div>
-                              </div>
-                              <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-label">Border</label>
-                                <input class="form-control" type="number" name="border" value="2" step="0.1" min="0" />
-                                <div class="form-hint text-muted-studio mt-1">This adds blank margin around the traced art so the stamp has a clean edge.</div>
-                              </div>
-                              <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-label">Base</label>
-                                <input class="form-control" type="number" name="base" value="4" step="0.1" min="0.1" />
-                                <div class="form-hint text-muted-studio mt-1">This is the solid backing thickness underneath the artwork.</div>
-                              </div>
-                              <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-label">Relief</label>
-                                <input class="form-control" type="number" name="relief" value="2" step="0.1" min="0.1" />
-                                <div class="form-hint text-muted-studio mt-1">This controls how tall the raised artwork sits above the base.</div>
-                              </div>
-                              <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-check form-switch mb-0">
-                                  <input class="form-check-input" type="checkbox" name="raised_border" checked />
-                                  <span class="form-check-label">Raised border</span>
-                                </label>
-                                <div class="form-hint text-muted-studio mt-1">Turn this on to raise the surrounding frame so the artwork stands out.</div>
-                              </div>
-                              <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-check form-switch mb-0">
-                                  <input class="form-check-input" type="checkbox" name="invert" />
-                                  <span class="form-check-label">Invert tones</span>
-                                </label>
-                                <div class="form-hint text-muted-studio mt-1">Use this if the artwork is white on dark instead of dark on light.</div>
-                              </div>
-                            </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Max height</label>
+                          <div class="input-group input-group-sm">
+                            <input class="form-control" type="number" name="height" value="{{ defaults.height if defaults.height is not none else defaults.size }}" step="0.1" min="10" />
+                            <span class="input-group-text">mm</span>
                           </div>
                         </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Border</label>
+                          <div class="input-group input-group-sm">
+                            <input class="form-control" type="number" name="border" value="2" step="0.1" min="0" />
+                            <span class="input-group-text">mm</span>
+                          </div>
+                          <span class="form-hint">Margin around artwork</span>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Base</label>
+                          <div class="input-group input-group-sm">
+                            <input class="form-control" type="number" name="base" value="4" step="0.1" min="0.1" />
+                            <span class="input-group-text">mm</span>
+                          </div>
+                          <span class="form-hint">Backing thickness</span>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-label">Relief</label>
+                          <div class="input-group input-group-sm">
+                            <input class="form-control" type="number" name="relief" value="2" step="0.1" min="0.1" />
+                            <span class="input-group-text">mm</span>
+                          </div>
+                          <span class="form-hint">Raised height</span>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="raised_border" checked />
+                            <span class="form-check-label">Raised border</span>
+                          </label>
+                          <span class="form-hint">Raise the outer frame</span>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl-3">
+                          <label class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" name="invert" />
+                            <span class="form-check-label">Invert tones</span>
+                          </label>
+                          <span class="form-hint">For white-on-dark artwork</span>
+                        </div>
                       </div>
+                    </div>
 
-                      <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                        <button type="submit" class="btn btn-lg btn-studio text-white px-4">
-                          <i class="ti ti-badge-check me-2"></i>
-                          Generate vector preview
-                        </button>
-                        <div class="text-muted-studio">The next step shows the traced outline and lets you move straight to STL generation.</div>
-                      </div>
-                    </form>
-                  </div>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="ti ti-eye me-1"></i>
+                      Preview
+                    </button>
+                  </form>
                 </div>
               </div>
 
-              <div class="col-12 col-lg-5">
-                <div class="card studio-card studio-step h-100">
-                  <div class="card-header">
-                    <div>
-                      <div class="fw-semibold mb-2"><i class="ti ti-route me-2"></i>How the flow works</div>
-                      <div class="text-muted-studio">A guided path from upload to preview to 3D review.</div>
-                    </div>
+              {% elif view_stage == 'preview' %}
+              <div class="card">
+                <div class="card-body">
+                  <div class="svg-preview-frame mb-3 p-2">
+                    <div>{{ session.preview_svg | safe }}</div>
                   </div>
-                  <div class="card-body">
-                    <div class="studio-checklist">
-                      <div class="studio-check-item">
-                        <div class="studio-icon-chip"><i class="ti ti-photo"></i></div>
-                        <div>
-                          <div class="fw-semibold">1. Upload artwork</div>
-                          <div class="text-muted-studio">Use clean black-and-white imagery for the best trace.</div>
-                        </div>
-                      </div>
-                      <div class="studio-check-item">
-                        <div class="studio-icon-chip"><i class="ti ti-vector-triangle"></i></div>
-                        <div>
-                          <div class="fw-semibold">2. Review vector preview</div>
-                          <div class="text-muted-studio">Inspect the traced SVG before committing to 3D generation.</div>
-                        </div>
-                      </div>
-                      <div class="studio-check-item">
-                        <div class="studio-icon-chip"><i class="ti ti-cube-send"></i></div>
-                        <div>
-                          <div class="fw-semibold">3. Generate and inspect</div>
-                          <div class="text-muted-studio">Generate the STL, then inspect it in 3D before downloading.</div>
-                        </div>
-                      </div>
-                    </div>
+                  <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge">{{ session.preview_info.mode|capitalize }}</span>
+                    <span class="badge">{{ session.preview_info.contours }} contours</span>
+                    <span class="badge">{{ session.preview_info.area }}</span>
+                    <span class="badge">{{ session.options.width if session.options.width is not none else session.options.size }} &times; {{ session.options.height if session.options.height is not none else session.options.size }} mm</span>
                   </div>
-                </div>
-                <div class="card studio-card">
-                  <div class="card-body">
-                    <div class="fw-semibold mb-2"><i class="ti ti-bulb me-2"></i>What happens next?</div>
-                    <div class="text-muted-studio">After generation, Stampify Studio will reveal the 3D preview so you can inspect the STL interactively.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% elif view_stage == 'preview' %}
-            <div class="row g-4">
-              <div class="col-12 col-xl-7">
-                <div class="card studio-card h-100">
-                  <div class="card-header">
-                    <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-vector-triangle me-2"></i>Vector preview</div>
-                      <div class="text-muted-studio">Review the traced outline, then generate the STL when it looks right.</div>
-                    </div>
-                    <div class="preview-badges d-flex gap-2 flex-wrap">
-                      <span class="badge">{{ session.preview_info.mode|capitalize }}</span>
-                      <span class="badge">{{ session.preview_info.contours }} contours</span>
-                      <span class="badge">{{ session.preview_info.area }}</span>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="studio-preview-frame studio-grid-preview p-3">
-                      <div class="studio-svg-preview">{{ session.preview_svg | safe }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-12 col-xl-5">
-                <div class="card studio-card mb-4">
-                  <div class="card-header">
-                    <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-cube-plus me-2"></i>Generate 3D file</div>
-                      <div class="text-muted-studio">This step turns the traced outline into a stamp-ready STL.</div>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="row g-3 mb-4">
-                      <div class="col-6">
-                        <div class="studio-kpi">
-                          <div class="text-muted-studio small">Width</div>
-                          <div class="fw-bold">{{ session.options.width if session.options.width is not none else session.options.size }} mm</div>
-                        </div>
-                      </div>
-                      <div class="col-6">
-                        <div class="studio-kpi">
-                          <div class="text-muted-studio small">Height</div>
-                          <div class="fw-bold">{{ session.options.height if session.options.height is not none else session.options.size }} mm</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="text-muted-studio small mb-3">Mode: {{ session.options.mode|capitalize }}</div>
-                    <form method="post" action="/generate" hx-post="/generate" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow">
+                  <div class="action-buttons d-flex flex-wrap gap-2">
+                    <form method="post" action="/generate" hx-post="/generate" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay">
                       <input type="hidden" name="token" value="{{ session.token }}" />
-                      <button type="submit" class="btn btn-lg btn-studio text-white w-100">
-                        <i class="ti ti-cube-send me-2"></i>
+                      <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-cube-send me-1"></i>
                         Generate STL
                       </button>
                     </form>
-                  </div>
-                </div>
-                <div class="card studio-card">
-                  <div class="card-body">
-                    <div class="fw-semibold mb-2"><i class="ti ti-bulb me-2"></i>What happens next?</div>
-                    <div class="text-muted-studio">After generation, Stampify Studio will reveal the 3D preview so you can inspect the STL interactively.</div>
+                    <a class="btn btn-ghost-secondary" href="/">
+                      <i class="ti ti-arrow-left me-1"></i>
+                      Start over
+                    </a>
                   </div>
                 </div>
               </div>
+
+              {% elif view_stage == 'result' %}
+              <div class="card">
+                <div class="card-body">
+                  <div class="viewer-container mb-3" data-mesh-url="{{ url_for('mesh_view', token=session.token) }}"></div>
+                  <div class="d-flex flex-wrap gap-3 align-items-center mb-3 text-secondary">
+                    <span><i class="ti ti-file me-1"></i>{{ session.result_path.name if session.result_path else session.upload_name ~ '-stamp.stl' }}</span>
+                    <span><i class="ti ti-dimensions me-1"></i>{{ session.result_info.dimensions }}</span>
+                    <span><i class="ti ti-database me-1"></i>{{ session.result_info.size }}</span>
+                  </div>
+                  <div class="action-buttons d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary" href="{{ url_for('download_model', token=session.token) }}">
+                      <i class="ti ti-download me-1"></i>
+                      Download STL
+                    </a>
+                    <a class="btn btn-ghost-secondary" href="/">
+                      <i class="ti ti-plus me-1"></i>
+                      New stamp
+                    </a>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
             </div>
-            {% elif view_stage == 'result' %}
-            <div class="row g-4">
-              <div class="col-12 col-xl-7">
-                <div class="card studio-card h-100">
-                  <div class="card-header">
-                    <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-cube me-2"></i>Interactive 3D preview</div>
-                      <div class="text-muted-studio">Inspect the generated stamp from every angle before downloading.</div>
-                    </div>
-                    <span class="badge bg-success-lt text-success">Ready</span>
-                  </div>
-                  <div class="card-body">
-                    <div class="studio-viewer" data-mesh-url="{{ url_for('mesh_view', token=session.token) }}"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-12 col-xl-5">
-                <div class="card studio-card mb-4">
-                  <div class="card-header">
-                    <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-report-analytics me-2"></i>Result details</div>
-                      <div class="text-muted-studio">The STL is ready for download.</div>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="row g-3 mb-4">
-                      <div class="col-12">
-                        <div class="studio-kpi">
-                          <div class="text-muted-studio small">File</div>
-                          <div class="fw-bold">{{ session.result_path.name if session.result_path else session.upload_name ~ '-stamp.stl' }}</div>
-                        </div>
-                      </div>
-                      <div class="col-6">
-                        <div class="studio-kpi">
-                          <div class="text-muted-studio small">Dimensions</div>
-                          <div class="fw-bold">{{ session.result_info.dimensions }}</div>
-                        </div>
-                      </div>
-                      <div class="col-6">
-                        <div class="studio-kpi">
-                          <div class="text-muted-studio small">File size</div>
-                          <div class="fw-bold">{{ session.result_info.size }}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="d-grid gap-2">
-                      <a class="btn btn-lg btn-studio text-white" href="{{ url_for('download_model', token=session.token) }}">
-                        <i class="ti ti-download me-2"></i>
-                        Download STL
-                      </a>
-                      <a class="btn btn-lg btn-soft" href="/">
-                        <i class="ti ti-repeat me-2"></i>
-                        Start another stamp
-                      </a>
-                    </div>
-                  </div>
-                </div>
-                <div class="card studio-card">
-                  <div class="card-body">
-                    <div class="fw-semibold mb-2"><i class="ti ti-scan me-2"></i>Preview workflow complete</div>
-                    <div class="text-muted-studio">You generated the STL and can now inspect or download the model.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% endif %}
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="spinner-overlay" id="loading-overlay">
+      <div class="spinner-border text-primary" role="status"></div>
+      <span class="text-secondary">Working&hellip;</span>
     </div>
 
     <script type="importmap">
@@ -1067,15 +391,13 @@
 
       function mountViewer(container) {
         const meshUrl = container.dataset.meshUrl;
-        if (!meshUrl || container.dataset.viewerReady === 'true') {
-          return;
-        }
+        if (!meshUrl || container.dataset.viewerReady === 'true') return;
         container.dataset.viewerReady = 'true';
 
         const width = container.clientWidth || 640;
         const height = container.clientHeight || 480;
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x07101f);
+        scene.background = new THREE.Color(0x1a1a2e);
 
         const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 1000);
         camera.position.set(120, 120, 160);
@@ -1104,13 +426,37 @@
         const loader = new STLLoader();
         loader.load(meshUrl, (geometry) => {
           geometry.center();
+          if (geometry.index) {
+            geometry = geometry.toNonIndexed();
+          }
           geometry.computeVertexNormals();
+          const positions = geometry.attributes.position;
+          let topZ = -Infinity;
+          for (let i = 0; i < positions.count; i += 1) {
+            topZ = Math.max(topZ, positions.getZ(i));
+          }
+          const topEpsilon = Math.max(1e-4, Math.abs(topZ) * 1e-6);
+          const colors = new Float32Array(positions.count * 3);
+          const bodyColor = new THREE.Color(0xe9f0ff);
+          const reliefColor = new THREE.Color(0x000000);
+          for (let i = 0; i < positions.count; i += 3) {
+            const isReliefTop =
+              positions.getZ(i) >= topZ - topEpsilon &&
+              positions.getZ(i + 1) >= topZ - topEpsilon &&
+              positions.getZ(i + 2) >= topZ - topEpsilon;
+            const color = isReliefTop ? reliefColor : bodyColor;
+            for (let j = 0; j < 3; j += 1) {
+              colors[(i + j) * 3] = color.r;
+              colors[(i + j) * 3 + 1] = color.g;
+              colors[(i + j) * 3 + 2] = color.b;
+            }
+          }
+          geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
           const material = new THREE.MeshStandardMaterial({
-            color: 0xe9f0ff,
-            metalness: 0.08,
-            roughness: 0.48,
-            emissive: 0x0d1220,
-            emissiveIntensity: 0.22,
+            color: 0xffffff,
+            vertexColors: true,
+            metalness: 0.06,
+            roughness: 0.54,
           });
           const mesh = new THREE.Mesh(geometry, material);
           mesh.rotation.x = -Math.PI / 2;
@@ -1149,47 +495,60 @@
 
       function mountUploadZone(form) {
         const input = form.querySelector('input[type="file"][name="artwork"]');
-        const zone = form.querySelector('.studio-upload-zone');
-        const status = form.querySelector('[data-file-name]');
+        const zone = form.querySelector('.upload-zone');
+        const thumb = form.querySelector('#upload-thumb');
+        const nameEl = form.querySelector('[data-file-name]');
+        const clearBtn = form.querySelector('#upload-clear');
 
-        if (!input || !zone || !status || form.dataset.uploadReady === 'true') {
-          return;
-        }
-
+        if (!input || !zone || form.dataset.uploadReady === 'true') return;
         form.dataset.uploadReady = 'true';
 
-        const updateLabel = () => {
+        let objectUrl = null;
+
+        function showPreview() {
           const file = input.files && input.files[0];
-          status.textContent = file ? file.name : 'Nothing selected yet';
-        };
+          if (!file) {
+            zone.classList.remove('has-preview');
+            if (nameEl) nameEl.textContent = '';
+            if (thumb) thumb.src = '';
+            if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+            return;
+          }
+          zone.classList.add('has-preview');
+          if (nameEl) nameEl.textContent = file.name;
+          if (thumb) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            objectUrl = URL.createObjectURL(file);
+            thumb.src = objectUrl;
+          }
+        }
 
-        input.addEventListener('change', updateLabel);
-        updateLabel();
+        input.addEventListener('change', showPreview);
 
-        zone.addEventListener('dragover', (event) => {
-          event.preventDefault();
-          zone.classList.add('is-dragover');
-        });
+        if (clearBtn) {
+          clearBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            input.value = '';
+            showPreview();
+          });
+        }
 
-        zone.addEventListener('dragenter', (event) => {
-          event.preventDefault();
-          zone.classList.add('is-dragover');
-        });
-
-        zone.addEventListener('dragleave', () => {
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('is-dragover'); });
+        zone.addEventListener('dragenter', (e) => { e.preventDefault(); zone.classList.add('is-dragover'); });
+        zone.addEventListener('dragleave', () => { zone.classList.remove('is-dragover'); });
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
           zone.classList.remove('is-dragover');
-        });
-
-        zone.addEventListener('drop', (event) => {
-          event.preventDefault();
-          zone.classList.remove('is-dragover');
-          if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length) {
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
             const transfer = new DataTransfer();
-            Array.from(event.dataTransfer.files).forEach((file) => transfer.items.add(file));
+            Array.from(e.dataTransfer.files).forEach((f) => transfer.items.add(f));
             input.files = transfer.files;
           }
-          updateLabel();
+          showPreview();
         });
+
+        showPreview();
       }
 
       function refreshViewers(root = document) {

@@ -13,80 +13,284 @@
     <style>
       :root {
         color-scheme: dark;
-        --studio-bg: #0b1020;
-        --studio-panel: rgba(18, 26, 44, 0.88);
-        --studio-border: rgba(255, 255, 255, 0.08);
-        --studio-accent: #7c3aed;
+        --studio-bg: #070d19;
+        --studio-surface: rgba(12, 19, 33, 0.92);
+        --studio-surface-strong: rgba(8, 13, 24, 0.98);
+        --studio-border: rgba(255, 255, 255, 0.09);
+        --studio-border-strong: rgba(255, 255, 255, 0.15);
+        --studio-text: rgba(248, 250, 252, 0.96);
+        --studio-muted: rgba(226, 232, 240, 0.84);
+        --studio-accent: #8b5cf6;
         --studio-accent-2: #06b6d4;
+        --studio-accent-3: #22c55e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
       }
 
       body {
+        min-height: 100vh;
+        margin: 0;
         font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--studio-text);
         background:
-          radial-gradient(circle at top left, rgba(124, 58, 237, 0.2), transparent 28%),
-          radial-gradient(circle at top right, rgba(6, 182, 212, 0.16), transparent 25%),
-          linear-gradient(180deg, #07101f 0%, #0a1020 36%, #060912 100%);
+          radial-gradient(circle at top left, rgba(139, 92, 246, 0.24), transparent 28%),
+          radial-gradient(circle at top right, rgba(6, 182, 212, 0.18), transparent 25%),
+          radial-gradient(circle at bottom center, rgba(34, 197, 94, 0.1), transparent 22%),
+          linear-gradient(180deg, #050913 0%, #07101e 42%, #03060d 100%);
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      body::before {
+        background:
+          radial-gradient(circle at 12% 18%, rgba(139, 92, 246, 0.16), transparent 0 28%),
+          radial-gradient(circle at 82% 12%, rgba(6, 182, 212, 0.14), transparent 0 22%),
+          radial-gradient(circle at 50% 92%, rgba(255, 255, 255, 0.06), transparent 0 24%);
+        filter: blur(24px);
+      }
+
+      body::after {
+        opacity: 0.12;
+        background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 88%);
+      }
+
+      .page {
+        position: relative;
+        z-index: 1;
       }
 
       .studio-shell {
         min-height: 100vh;
+        padding: 1rem 0 2rem;
       }
 
       .studio-hero {
         position: relative;
         overflow: hidden;
         border: 1px solid var(--studio-border);
-        background: linear-gradient(145deg, rgba(20, 29, 51, 0.92), rgba(13, 19, 35, 0.9));
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+        border-radius: 1.6rem;
+        background: linear-gradient(140deg, rgba(20, 28, 46, 0.92), rgba(10, 15, 28, 0.94));
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
       }
 
+      .studio-hero::before,
       .studio-hero::after {
         content: "";
         position: absolute;
-        inset: auto -20% -50% auto;
-        width: 28rem;
-        height: 28rem;
-        background: radial-gradient(circle, rgba(124, 58, 237, 0.22), transparent 68%);
+        border-radius: 999px;
         pointer-events: none;
+      }
+
+      .studio-hero::before {
+        inset: -8rem auto auto -10rem;
+        width: 22rem;
+        height: 22rem;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.22), transparent 66%);
+      }
+
+      .studio-hero::after {
+        inset: auto -4rem -10rem auto;
+        width: 24rem;
+        height: 24rem;
+        background: radial-gradient(circle, rgba(6, 182, 212, 0.18), transparent 68%);
+      }
+
+      .studio-hero-copy {
+        position: relative;
+        z-index: 1;
+        max-width: 58rem;
       }
 
       .studio-badge {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.45rem 0.8rem;
+        padding: 0.45rem 0.85rem;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(255, 255, 255, 0.04);
-        color: rgba(255, 255, 255, 0.82);
-        font-size: 0.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.94);
+        font-size: 0.92rem;
+        backdrop-filter: blur(10px);
       }
 
       .studio-title {
-        letter-spacing: -0.05em;
-        line-height: 0.95;
+        letter-spacing: -0.06em;
+        line-height: 0.92;
+      }
+
+      .studio-subtitle {
+        max-width: 64ch;
+        color: var(--studio-muted);
       }
 
       .studio-muted {
-        color: rgba(255, 255, 255, 0.7);
+        color: var(--studio-muted) !important;
       }
 
-      .studio-card {
-        background: var(--studio-panel);
-        border: 1px solid var(--studio-border);
-        backdrop-filter: blur(18px);
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+      .studio-card,
+      .studio-card .card-body,
+      .studio-card .card-header {
+        color: var(--studio-text);
+      }
+
+      .studio-card .form-label,
+      .studio-card .form-check-label,
+      .studio-card .form-hint,
+      .studio-card .studio-fieldset-copy,
+      .studio-card .studio-upload-desc,
+      .studio-card .studio-upload-status,
+      .studio-card .studio-summary-list li,
+      .studio-card .small {
+        color: rgba(248, 250, 252, 0.9);
+      }
+
+      .studio-card .text-muted-studio,
+      .studio-card .studio-fieldset-copy,
+      .studio-card .studio-upload-desc,
+      .studio-card .form-hint {
+        color: rgba(226, 232, 240, 0.86) !important;
+      }
+
+      .studio-card .badge,
+      .studio-chip {
+        color: rgba(255, 255, 255, 0.94);
+      }
+
+      .studio-card .fw-semibold,
+      .studio-card .fw-bold,
+      .studio-card .card-title {
+        color: rgba(255, 255, 255, 0.98);
+      }
+
+      .studio-pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .studio-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.94);
+      }
+
+      .studio-stepper {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 0.8rem;
       }
 
       .studio-step {
-        min-height: 100%;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 0.95rem 1rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.035);
       }
 
-      .studio-step-header {
+      .studio-step.active {
+        border-color: rgba(6, 182, 212, 0.42);
+        background: linear-gradient(145deg, rgba(6, 182, 212, 0.14), rgba(139, 92, 246, 0.14));
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      }
+
+      .studio-step-number {
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.8rem;
+        display: grid;
+        place-items: center;
+        flex: none;
+        font-weight: 800;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.95), rgba(6, 182, 212, 0.95));
+        box-shadow: 0 8px 18px rgba(6, 182, 212, 0.2);
+      }
+
+      .studio-step-number.is-muted {
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+      }
+
+      .studio-step-copy {
+        display: grid;
+        gap: 0.15rem;
+      }
+
+      .studio-checklist {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .studio-check-item {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 0.9rem 1rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.035);
+        color: rgba(255, 255, 255, 0.95);
+      }
+
+      .studio-icon-chip {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.85rem;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(145deg, rgba(139, 92, 246, 0.95), rgba(6, 182, 212, 0.9));
+        color: white;
+        flex: none;
+        box-shadow: 0 10px 20px rgba(6, 182, 212, 0.15);
+      }
+
+      .studio-upload-note {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .studio-card {
+        background: var(--studio-surface);
+        border: 1px solid var(--studio-border);
+        border-radius: 1.35rem;
+        backdrop-filter: blur(18px);
+        box-shadow: 0 22px 56px rgba(0, 0, 0, 0.28);
+        overflow: hidden;
+      }
+
+      .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         gap: 1rem;
+      }
+
+      .card-title {
+        letter-spacing: -0.03em;
       }
 
       .studio-grid-preview {
@@ -98,7 +302,7 @@
 
       .studio-preview-frame {
         border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(5, 10, 20, 0.84);
+        background: rgba(5, 10, 20, 0.82);
         border-radius: 1rem;
         overflow: hidden;
       }
@@ -111,10 +315,10 @@
 
       .studio-viewer {
         width: 100%;
-        height: 24rem;
+        height: clamp(22rem, 48vw, 34rem);
         border-radius: 1rem;
         overflow: hidden;
-        background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.14), transparent 48%), #07101f;
+        background: radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.13), transparent 48%), #07101f;
         border: 1px solid rgba(255, 255, 255, 0.08);
       }
 
@@ -124,48 +328,181 @@
         height: 100% !important;
       }
 
-      .studio-checklist {
+      .studio-upload-zone {
+        position: relative;
+        display: block;
+        min-height: 14rem;
+        padding: 1.25rem;
+        border-radius: 1.15rem;
+        border: 1px dashed rgba(255, 255, 255, 0.16);
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+        cursor: pointer;
+        transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      }
+
+      .studio-upload-zone:hover,
+      .studio-upload-zone.is-dragover {
+        border-color: rgba(6, 182, 212, 0.55);
+        background: linear-gradient(160deg, rgba(6, 182, 212, 0.12), rgba(139, 92, 246, 0.1));
+        transform: translateY(-1px);
+        box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
+      }
+
+      .studio-upload-zone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .studio-upload-content {
+        position: relative;
+        z-index: 1;
         display: grid;
-        gap: 0.65rem;
+        gap: 1rem;
+        align-content: start;
       }
 
-      .studio-check-item {
+      .studio-upload-topline {
         display: flex;
-        align-items: start;
-        gap: 0.7rem;
-        padding: 0.75rem 0.85rem;
-        border-radius: 0.8rem;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.03);
+        align-items: center;
+        gap: 0.9rem;
       }
 
-      .studio-icon-chip {
-        width: 2rem;
-        height: 2rem;
-        border-radius: 0.7rem;
+      .studio-upload-icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 1rem;
         display: grid;
         place-items: center;
-        background: linear-gradient(145deg, rgba(124, 58, 237, 0.95), rgba(6, 182, 212, 0.9));
         color: white;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.98), rgba(6, 182, 212, 0.92));
+        box-shadow: 0 10px 24px rgba(6, 182, 212, 0.22);
         flex: none;
       }
 
+      .studio-upload-meta {
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .studio-upload-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .studio-upload-desc {
+        color: var(--studio-muted);
+        line-height: 1.55;
+      }
+
+      .studio-upload-status {
+        padding: 0.85rem 0.95rem;
+        border-radius: 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.94);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        word-break: break-word;
+      }
+
+      .studio-upload-status span:last-child {
+        color: rgba(255, 255, 255, 0.92);
+      }
+
+      .studio-upload-status .studio-file-name {
+        color: rgba(255, 255, 255, 0.98);
+      }
+
+      .studio-input-grid {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .studio-fieldset {
+        padding: 1rem;
+        border-radius: 1.1rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .studio-fieldset-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.9rem;
+      }
+
+      .studio-fieldset-title {
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .studio-fieldset-copy {
+        color: rgba(226, 232, 240, 0.82);
+        font-size: 0.95rem;
+      }
+
       .studio-kpi {
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 0.9rem;
-        padding: 0.9rem 1rem;
+        height: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.055);
+        border-radius: 1rem;
+        padding: 1rem;
+      }
+
+      .studio-summary-list {
+        display: grid;
+        gap: 0.7rem;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .studio-summary-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.8rem;
+        color: rgba(255, 255, 255, 0.94);
+      }
+
+      .studio-summary-list i {
+        color: #22d3ee;
+        margin-top: 0.15rem;
+      }
+
+      .studio-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.94);
+        font-size: 0.84rem;
       }
 
       .btn-studio {
+        position: relative;
+        isolation: isolate;
         background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
         border: 0;
         box-shadow: 0 14px 28px rgba(6, 182, 212, 0.22);
       }
 
-      .btn-studio:hover {
+      .btn-studio:hover,
+      .btn-studio:focus-visible {
         transform: translateY(-1px);
         box-shadow: 0 18px 34px rgba(6, 182, 212, 0.28);
+        color: white;
       }
 
       .btn-soft {
@@ -174,38 +511,83 @@
         color: white;
       }
 
-      .btn-soft:hover {
+      .btn-soft:hover,
+      .btn-soft:focus-visible {
         background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.18);
         color: white;
       }
 
       .form-control,
       .form-select {
-        background-color: rgba(255, 255, 255, 0.04) !important;
-        border-color: rgba(255, 255, 255, 0.1) !important;
-        color: rgba(255, 255, 255, 0.92) !important;
+        min-height: 3rem;
+        border-radius: 0.9rem;
+        background-color: rgba(255, 255, 255, 0.06) !important;
+        border-color: rgba(255, 255, 255, 0.14) !important;
+        color: rgba(255, 255, 255, 0.98) !important;
+      }
+
+      .form-control:focus,
+      .form-select:focus {
+        border-color: rgba(6, 182, 212, 0.65) !important;
+        box-shadow: 0 0 0 0.22rem rgba(6, 182, 212, 0.18) !important;
       }
 
       .form-control::placeholder {
-        color: rgba(255, 255, 255, 0.38);
-      }
-
-      .text-muted-studio {
-        color: rgba(255, 255, 255, 0.68) !important;
-      }
-
-      .card-title {
-        letter-spacing: -0.03em;
-      }
-
-      .preview-badges .badge {
-        background: rgba(255, 255, 255, 0.06);
-        color: rgba(255, 255, 255, 0.86);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.54);
       }
 
       .form-range::-webkit-slider-thumb {
         background: #22d3ee;
+      }
+
+      .form-range::-moz-range-thumb {
+        background: #22d3ee;
+      }
+
+      .text-muted-studio {
+        color: var(--studio-muted) !important;
+      }
+
+      .preview-badges .badge {
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+
+      .htmx-request .studio-submit-label {
+        opacity: 0;
+      }
+
+      .htmx-request .studio-submit-busy {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .studio-submit-busy {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        opacity: 0;
+        transform: translateY(0.15rem);
+        transition: opacity 160ms ease, transform 160ms ease;
+        position: absolute;
+        inset: 0;
+        justify-content: center;
+      }
+
+      .studio-submit-label {
+        transition: opacity 160ms ease;
+      }
+
+      @media (max-width: 991.98px) {
+        .studio-shell {
+          padding-top: 0.75rem;
+        }
+
+        .studio-title {
+          line-height: 0.98;
+        }
       }
     </style>
   </head>
@@ -227,6 +609,11 @@
                       Upload artwork, review the traced vector, approve it, and then generate an STL with an interactive 3D preview.
                       Built with FastAPI, HTMX, and Tabler CSS for a polished experience.
                     </p>
+                    <div class="studio-pill-row mt-4">
+                      <span class="studio-pill"><i class="ti ti-upload"></i> Drop in artwork</span>
+                      <span class="studio-pill"><i class="ti ti-vector-triangle"></i> Review the trace</span>
+                      <span class="studio-pill"><i class="ti ti-cube-send"></i> Export the STL</span>
+                    </div>
                   </div>
                   <div class="d-flex flex-column gap-2">
                     <div class="studio-badge"><i class="ti ti-bolt"></i> FastAPI + HTMX</div>
@@ -264,63 +651,114 @@
                     </div>
                   </div>
                   <div class="card-body">
-                    <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" class="vstack gap-4">
-                      <div>
-                        <label class="form-label fw-semibold">Artwork file</label>
-                        <input class="form-control form-control-lg" type="file" name="artwork" accept="image/*" required />
-                        <div class="form-hint text-muted-studio mt-2">Best results usually come from black-and-white logos, artwork, and silhouettes.</div>
+                    <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" class="vstack gap-4" id="preview-form">
+                      <div class="studio-fieldset">
+                        <div class="studio-fieldset-header">
+                          <div>
+                            <div class="studio-fieldset-title">Artwork file</div>
+                            <div class="studio-fieldset-copy">Pick a clean, high-contrast source image to trace.</div>
+                          </div>
+                          <span class="studio-chip"><i class="ti ti-photo"></i> PNG, JPG, SVG</span>
+                        </div>
+
+                        <label class="studio-upload-zone" for="artwork-input">
+                          <input id="artwork-input" class="form-control form-control-lg" type="file" name="artwork" accept="image/*" required />
+                          <div class="studio-upload-content">
+                            <div class="studio-upload-topline">
+                              <div class="studio-upload-icon"><i class="ti ti-cloud-upload"></i></div>
+                              <div class="studio-upload-meta">
+                                <div class="studio-upload-title">Drop an image here or browse</div>
+                                <div class="studio-upload-desc">Black-and-white logos, artwork, and silhouettes tend to trace best.</div>
+                              </div>
+                            </div>
+                            <div class="studio-upload-status">
+                              <span>Selected file</span>
+                              <span class="studio-file-name" data-file-name>Nothing selected yet</span>
+                            </div>
+                            <div class="studio-upload-note">
+                              <span class="studio-chip"><i class="ti ti-eye-check"></i> Strong contrast</span>
+                              <span class="studio-chip"><i class="ti ti-mood-smile"></i> Simple shapes</span>
+                            </div>
+                          </div>
+                        </label>
+
+                        <div class="form-hint text-muted-studio mt-2">The app will keep the original artwork and show a traced preview before any STL is generated.</div>
                       </div>
 
-                      <div class="row g-3">
-                        <div class="col-md-6">
-                          <label class="form-label">Mode</label>
-                          <select class="form-select" name="mode">
-                            <option value="vector" selected>Vector preview</option>
-                            <option value="voxel">Voxel fallback</option>
-                          </select>
-                        </div>
-                        <div class="col-md-6">
-                          <label class="form-label">Stamp size</label>
-                          <input class="form-control" type="number" name="size" value="80" step="0.1" min="10" />
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label">Border</label>
-                          <input class="form-control" type="number" name="border" value="2" step="0.1" min="0" />
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label">Base</label>
-                          <input class="form-control" type="number" name="base" value="4" step="0.1" min="0.1" />
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label">Relief</label>
-                          <input class="form-control" type="number" name="relief" value="2" step="0.1" min="0.1" />
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label">Threshold</label>
-                          <input class="form-control" type="number" name="threshold" value="190" step="1" min="0" max="255" />
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label">Resolution</label>
-                          <input class="form-control" type="number" name="resolution" value="0" step="1" min="0" />
-                        </div>
-                        <div class="col-md-4">
-                          <label class="form-label">Simplify</label>
-                          <input class="form-control" type="number" name="simplify" value="0.08" step="0.01" min="0" />
-                        </div>
-                      </div>
+                      <div class="row g-4">
+                        <div class="col-12 col-xl-7">
+                          <div class="studio-fieldset h-100">
+                            <div class="studio-fieldset-header">
+                              <div>
+                                <div class="studio-fieldset-title">Trace tuning</div>
+                                <div class="studio-fieldset-copy">Adjust how the source image is simplified into a vector outline.</div>
+                              </div>
+                            </div>
 
-                      <div class="row g-3">
-                        <div class="col-md-6">
-                          <label class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="raised_border" checked />
-                            <span class="form-check-label">Raised border</span>
-                          </label>
+                            <div class="row g-3">
+                              <div class="col-12 col-md-6">
+                                <label class="form-label">Mode</label>
+                                <select class="form-select" name="mode">
+                                  <option value="vector" selected>Vector preview</option>
+                                  <option value="voxel">Voxel fallback</option>
+                                </select>
+                              </div>
+                              <div class="col-12 col-md-6">
+                                <label class="form-label">Threshold</label>
+                                <input class="form-control" type="number" name="threshold" value="190" step="1" min="0" max="255" />
+                              </div>
+                              <div class="col-12 col-md-6">
+                                <label class="form-label">Resolution</label>
+                                <input class="form-control" type="number" name="resolution" value="0" step="1" min="0" />
+                              </div>
+                              <div class="col-12 col-md-6">
+                                <label class="form-label">Simplify</label>
+                                <input class="form-control" type="number" name="simplify" value="0.08" step="0.01" min="0" />
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div class="col-md-6">
-                          <label class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" name="invert" />
-                            <span class="form-check-label">Invert tones</span>
-                          </label>
+
+                        <div class="col-12 col-xl-5">
+                          <div class="studio-fieldset h-100">
+                            <div class="studio-fieldset-header">
+                              <div>
+                                <div class="studio-fieldset-title">Stamp geometry</div>
+                                <div class="studio-fieldset-copy">Control the physical size and the raised structure.</div>
+                              </div>
+                            </div>
+
+                            <div class="row g-3">
+                              <div class="col-12 col-md-6 col-xl-12">
+                                <label class="form-label">Stamp size</label>
+                                <input class="form-control" type="number" name="size" value="80" step="0.1" min="10" />
+                              </div>
+                              <div class="col-12 col-md-6 col-xl-12">
+                                <label class="form-label">Border</label>
+                                <input class="form-control" type="number" name="border" value="2" step="0.1" min="0" />
+                              </div>
+                              <div class="col-12 col-md-6 col-xl-12">
+                                <label class="form-label">Base</label>
+                                <input class="form-control" type="number" name="base" value="4" step="0.1" min="0.1" />
+                              </div>
+                              <div class="col-12 col-md-6 col-xl-12">
+                                <label class="form-label">Relief</label>
+                                <input class="form-control" type="number" name="relief" value="2" step="0.1" min="0.1" />
+                              </div>
+                              <div class="col-12 col-md-6 col-xl-12">
+                                <label class="form-check form-switch mb-0">
+                                  <input class="form-check-input" type="checkbox" name="raised_border" checked />
+                                  <span class="form-check-label">Raised border</span>
+                                </label>
+                              </div>
+                              <div class="col-12 col-md-6 col-xl-12">
+                                <label class="form-check form-switch mb-0">
+                                  <input class="form-check-input" type="checkbox" name="invert" />
+                                  <span class="form-check-label">Invert tones</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -650,8 +1088,54 @@
         animate();
       }
 
+      function mountUploadZone(form) {
+        const input = form.querySelector('input[type="file"][name="artwork"]');
+        const zone = form.querySelector('.studio-upload-zone');
+        const status = form.querySelector('[data-file-name]');
+
+        if (!input || !zone || !status || form.dataset.uploadReady === 'true') {
+          return;
+        }
+
+        form.dataset.uploadReady = 'true';
+
+        const updateLabel = () => {
+          const file = input.files && input.files[0];
+          status.textContent = file ? file.name : 'Nothing selected yet';
+        };
+
+        input.addEventListener('change', updateLabel);
+        updateLabel();
+
+        zone.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          zone.classList.add('is-dragover');
+        });
+
+        zone.addEventListener('dragenter', (event) => {
+          event.preventDefault();
+          zone.classList.add('is-dragover');
+        });
+
+        zone.addEventListener('dragleave', () => {
+          zone.classList.remove('is-dragover');
+        });
+
+        zone.addEventListener('drop', (event) => {
+          event.preventDefault();
+          zone.classList.remove('is-dragover');
+          if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length) {
+            const transfer = new DataTransfer();
+            Array.from(event.dataTransfer.files).forEach((file) => transfer.items.add(file));
+            input.files = transfer.files;
+          }
+          updateLabel();
+        });
+      }
+
       function refreshViewers(root = document) {
         root.querySelectorAll('[data-mesh-url]').forEach((el) => mountViewer(el));
+        root.querySelectorAll('#preview-form').forEach((form) => mountUploadZone(form));
       }
 
       document.addEventListener('DOMContentLoaded', () => refreshViewers());

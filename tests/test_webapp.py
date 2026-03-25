@@ -46,7 +46,7 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert "No SVG preview yet" in root.text
     assert 'title="Generate a preview first"' in root.text
     assert 'disabled aria-disabled="true"' in root.text
-    assert "?view=preview" not in root.text
+    assert "Result" not in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.threshold}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.resolution}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.border}"' in root.text
@@ -67,6 +67,7 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert "SVG Preview" in preview.text
     assert "Generated" in preview.text
     assert "No SVG preview yet" not in preview.text
+    assert "Download STL" not in preview.text
     assert "name=\"token\"" in preview.text
     assert "90.0 × 90.0 mm" in preview.text
     assert '<rect x="0" y="0" width="100%" height="100%" fill="#fff" />' in preview.text
@@ -79,32 +80,25 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
 
     token = _extract_token(preview.text)
 
-    preview_view = client.get(f"/?token={token}&view=preview")
-    assert preview_view.status_code == 200
-    assert "SVG Preview" in preview_view.text
-    assert "Generate STL" in preview_view.text
-    assert "No SVG preview yet" not in preview_view.text
-    assert "90.0 × 90.0 mm" in preview_view.text
-    assert "?view=preview" not in preview_view.text
-
-    upload_view = client.get(f"/?token={token}&view=upload")
-    assert upload_view.status_code == 200
-    assert "Session saved" in upload_view.text
-    assert "Reset to blank" in upload_view.text
-    assert "SVG Preview" in upload_view.text
-    assert "Generate STL" in upload_view.text
-    assert "No SVG preview yet" not in upload_view.text
+    session_view = client.get(f"/?token={token}")
+    assert session_view.status_code == 200
+    assert "Session saved" in session_view.text
+    assert "Reset to blank" in session_view.text
+    assert "SVG Preview" in session_view.text
+    assert "Generate STL" in session_view.text
+    assert "No SVG preview yet" not in session_view.text
+    assert "Download STL" not in session_view.text
 
     generated = client.post("/generate", data={"token": token})
     assert generated.status_code == 200
-    assert "Result" in generated.text
     assert "Download STL" in generated.text
     assert "data-mesh-url" in generated.text
 
-    result_view = client.get(f"/?token={token}&view=result")
-    assert result_view.status_code == 200
-    assert "Result" in result_view.text
-    assert "Download STL" in result_view.text
+    generated_view = client.get(f"/?token={token}")
+    assert generated_view.status_code == 200
+    assert "Download STL" in generated_view.text
+    assert "data-mesh-url" in generated_view.text
+    assert "Result" not in generated_view.text
 
     reset_view = client.post("/reset", data={"token": token})
     assert reset_view.status_code == 200
@@ -163,4 +157,5 @@ def test_webapp_accepts_svg_artwork() -> None:
     assert preview.status_code == 200
     assert "Generate STL" in preview.text
     assert "SVG Preview" in preview.text
+    assert "Download STL" not in preview.text
     assert "name=\"token\"" in preview.text

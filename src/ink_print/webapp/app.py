@@ -187,9 +187,7 @@ def _render_page(
     request: Request,
     session: WebSession | None = None,
     error: str | None = None,
-    view_stage: Literal["upload", "preview", "result"] | None = None,
 ) -> HTMLResponse:
-    view_stage = view_stage or ("upload" if session is None else session.stage)
     defaults = session.options if session is not None else DEFAULT_OPTIONS
     return TEMPLATES.TemplateResponse(
         request,
@@ -199,25 +197,8 @@ def _render_page(
             "session": session,
             "defaults": defaults,
             "error": error,
-            "view_stage": view_stage,
         },
     )
-
-
-def _resolve_view_stage(session: WebSession | None, requested: Literal["upload", "preview", "result"] | str) -> Literal["upload", "preview", "result"]:
-    if session is None:
-        return "upload"
-
-    if requested == "upload":
-        return "upload"
-
-    if requested == "result" and session.result_path is not None and session.result_path.exists():
-        return "result"
-
-    if requested == "preview":
-        return "preview"
-
-    return session.stage if session.stage in {"preview", "result"} else "preview"
 
 
 async def _store_upload(upload: UploadFile) -> tuple[Path, str]:
@@ -239,13 +220,12 @@ async def _store_upload(upload: UploadFile) -> tuple[Path, str]:
 def index(
     request: Request,
     token: str | None = None,
-    view: Literal["upload", "preview", "result"] = "upload",
 ) -> HTMLResponse:
     session = _get_session(token) if token else None
     if token and session is None:
         return _render_page(request, error="That preview session expired. Please upload a new image.")
 
-    return _render_page(request, session=session, view_stage=_resolve_view_stage(session, view))
+    return _render_page(request, session=session)
 
 
 @app.get("/__reload-id", name="reload_id")
@@ -316,7 +296,7 @@ async def preview(
         preview_info=preview_info,
     )
     _SESSIONS[token] = session
-    return _render_page(request, session=session, view_stage="preview")
+    return _render_page(request, session=session)
 
 
 @app.post("/approve", response_class=HTMLResponse)
@@ -345,7 +325,7 @@ def generate(request: Request, token: str = Form(...)) -> HTMLResponse:
         "dimensions": f"{mesh.extents[0]:.1f} × {mesh.extents[1]:.1f} × {mesh.extents[2]:.1f} mm",
         "size": _human_size(result_path.stat().st_size),
     }
-    return _render_page(request, session=session, view_stage="result")
+    return _render_page(request, session=session)
 
 
 @app.post("/reset", response_class=HTMLResponse)
@@ -353,7 +333,7 @@ def reset(request: Request, token: str | None = Form(None)) -> HTMLResponse:
     if token:
         _cleanup_session(token)
 
-    return _render_page(request, view_stage="upload")
+    return _render_page(request)
 
 
 @app.get("/artifact/{token}/mesh", name="mesh_view")

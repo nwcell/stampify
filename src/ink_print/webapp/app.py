@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 
+from ink_print.cli import DEFAULT_OPTIONS as CLI_DEFAULT_OPTIONS
 from ink_print.core import StampOptions, build_stamp_mesh_from_mask, load_mask, trace_geometry
 
 APP_DIR = Path(__file__).resolve().parent
@@ -25,13 +26,13 @@ app = FastAPI(
     description="Guided browser UI for turning artwork into stamp STL files.",
 )
 
-DEFAULT_OPTIONS = StampOptions()
+DEFAULT_OPTIONS = CLI_DEFAULT_OPTIONS
 
 
 @dataclass(slots=True)
 class WebSession:
     token: str
-    stage: Literal["preview", "approved", "result"]
+    stage: Literal["preview", "result"]
     created_at: float
     last_accessed: float
     workspace: Path
@@ -62,7 +63,9 @@ def _format_mm(value: float) -> str:
 
 def _build_options(
     mode: Literal["vector", "voxel"],
-    size: float,
+    size: float | None,
+    width: float | None,
+    height: float | None,
     border: float,
     base: float,
     relief: float,
@@ -74,17 +77,19 @@ def _build_options(
 ) -> StampOptions:
     return StampOptions(
         mode=mode,
-        size=size,
-        border=border,
-        base=base,
-        relief=relief,
+        size=size if size is not None else DEFAULT_OPTIONS.size,
+        width=width if width is not None else DEFAULT_OPTIONS.width,
+        height=height if height is not None else DEFAULT_OPTIONS.height,
+        border=border if border is not None else DEFAULT_OPTIONS.border,
+        base=base if base is not None else DEFAULT_OPTIONS.base,
+        relief=relief if relief is not None else DEFAULT_OPTIONS.relief,
         layer=DEFAULT_OPTIONS.layer,
-        simplify=simplify,
+        simplify=simplify if simplify is not None else DEFAULT_OPTIONS.simplify,
         min_area=DEFAULT_OPTIONS.min_area,
-        threshold=threshold,
-        resolution=resolution,
-        raised_border=raised_border,
-        invert=invert,
+        threshold=threshold if threshold is not None else DEFAULT_OPTIONS.threshold,
+        resolution=resolution if resolution is not None else DEFAULT_OPTIONS.resolution,
+        raised_border=raised_border if raised_border is not None else DEFAULT_OPTIONS.raised_border,
+        invert=invert if invert is not None else DEFAULT_OPTIONS.invert,
         mirror=DEFAULT_OPTIONS.mirror,
     )
 
@@ -179,7 +184,13 @@ def _get_session(token: str) -> WebSession | None:
     return session
 
 
-def _render_page(request: Request, session: WebSession | None = None, error: str | None = None) -> HTMLResponse:
+def _render_page(
+    request: Request,
+    session: WebSession | None = None,
+    error: str | None = None,
+    view_stage: Literal["upload", "preview", "result"] | None = None,
+) -> HTMLResponse:
+    view_stage = view_stage or ("upload" if session is None else session.stage)
     return TEMPLATES.TemplateResponse(
         request,
         "index.html",
@@ -187,8 +198,22 @@ def _render_page(request: Request, session: WebSession | None = None, error: str
             "session": session,
             "defaults": DEFAULT_OPTIONS,
             "error": error,
+            "view_stage": view_stage,
         },
     )
+
+
+def _resolve_view_stage(session: WebSession | None, requested: Literal["upload", "preview", "result"] | str) -> Literal["upload", "preview", "result"]:
+    if session is None:
+        return "upload"
+
+    if requested == "result" and session.result_path is not None and session.result_path.exists():
+        return "result"
+
+    if requested == "preview":
+        return "preview"
+
+    return session.stage if session.stage in {"preview", "result"} else "preview"
 
 
 async def _store_upload(upload: UploadFile) -> tuple[Path, str]:
@@ -207,8 +232,16 @@ async def _store_upload(upload: UploadFile) -> tuple[Path, str]:
 
 
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request) -> HTMLResponse:
-    return _render_page(request)
+def index(
+    request: Request,
+    token: str | None = None,
+    view: Literal["upload", "preview", "result"] = "upload",
+) -> HTMLResponse:
+    session = _get_session(token) if token else None
+    if token and session is None:
+        return _render_page(request, error="That preview session expired. Please upload a new image.")
+
+    return _render_page(request, session=session, view_stage=_resolve_view_stage(session, view))
 
 
 @app.post("/preview", response_class=HTMLResponse)
@@ -216,17 +249,19 @@ async def preview(
     request: Request,
     artwork: UploadFile = File(...),
     mode: Literal["vector", "voxel"] = Form("vector"),
-    size: float = Form(80.0),
-    border: float = Form(2.0),
-    base: float = Form(4.0),
-    relief: float = Form(2.0),
-    threshold: int = Form(190),
-    resolution: int = Form(0),
-    simplify: float = Form(0.08),
-    raised_border: bool = Form(False),
-    invert: bool = Form(False),
+    size: float = Form(DEFAULT_OPTIONS.size),
+    width: float = Form(DEFAULT_OPTIONS.width),
+    height: float = Form(DEFAULT_OPTIONS.height),
+    border: float = Form(DEFAULT_OPTIONS.border),
+    base: float = Form(DEFAULT_OPTIONS.base),
+    relief: float = Form(DEFAULT_OPTIONS.relief),
+    threshold: int = Form(DEFAULT_OPTIONS.threshold),
+    resolution: int = Form(DEFAULT_OPTIONS.resolution),
+    simplify: float = Form(DEFAULT_OPTIONS.simplify),
+    raised_border: bool = Form(DEFAULT_OPTIONS.raised_border),
+    invert: bool = Form(DEFAULT_OPTIONS.invert),
 ) -> HTMLResponse:
-    options = _build_options(mode, size, border, base, relief, threshold, resolution, simplify, raised_border, invert)
+    options = _build_options(mode, size, width, height, border, base, relief, threshold, resolution, simplify, raised_border, invert)
     workspace: Path | None = None
 
     try:
@@ -259,17 +294,12 @@ async def preview(
         preview_info=preview_info,
     )
     _SESSIONS[token] = session
-    return _render_page(request, session=session)
+    return _render_page(request, session=session, view_stage="preview")
 
 
 @app.post("/approve", response_class=HTMLResponse)
 def approve(request: Request, token: str = Form(...)) -> HTMLResponse:
-    session = _get_session(token)
-    if session is None:
-        return _render_page(request, error="That preview session expired. Please generate a new preview.")
-
-    session.stage = "approved"
-    return _render_page(request, session=session)
+    return generate(request, token)
 
 
 @app.post("/generate", response_class=HTMLResponse)
@@ -294,7 +324,7 @@ def generate(request: Request, token: str = Form(...)) -> HTMLResponse:
         "size": _human_size(result_path.stat().st_size),
         "mode": session.options.mode,
     }
-    return _render_page(request, session=session)
+    return _render_page(request, session=session, view_stage="result")
 
 
 @app.get("/artifact/{token}/mesh", name="mesh_view")

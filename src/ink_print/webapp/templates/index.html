@@ -202,6 +202,55 @@
         gap: 0.8rem;
       }
 
+      .studio-stage-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .studio-stage-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.85rem 1rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.94);
+        text-decoration: none;
+        transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+      }
+
+      .studio-stage-link:hover,
+      .studio-stage-link:focus-visible {
+        transform: translateY(-1px);
+        border-color: rgba(6, 182, 212, 0.5);
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+      }
+
+      .studio-stage-link.is-active {
+        border-color: rgba(6, 182, 212, 0.6);
+        background: linear-gradient(145deg, rgba(6, 182, 212, 0.18), rgba(139, 92, 246, 0.16));
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      }
+
+      .studio-stage-link.is-disabled {
+        opacity: 0.45;
+        pointer-events: none;
+      }
+
+      .studio-stage-link strong {
+        display: block;
+      }
+
+      .studio-stage-link span {
+        display: block;
+        color: rgba(226, 232, 240, 0.86);
+        font-size: 0.86rem;
+      }
+
       .studio-step {
         display: flex;
         align-items: flex-start;
@@ -353,6 +402,7 @@
         inset: 0;
         width: 100%;
         height: 100%;
+        z-index: 2;
         opacity: 0;
         cursor: pointer;
       }
@@ -362,6 +412,7 @@
         z-index: 1;
         display: grid;
         gap: 1rem;
+        pointer-events: none;
         align-content: start;
       }
 
@@ -602,11 +653,11 @@
                   <div class="me-lg-5" style="max-width: 56rem;">
                     <div class="studio-badge mb-3">
                       <i class="ti ti-sparkles"></i>
-                      Guided vector approval and 3D review
+                      Guided vector preview and 3D review
                     </div>
                     <h1 class="display-5 fw-bolder studio-title mb-3">Stampify Studio</h1>
                     <p class="lead studio-muted mb-0">
-                      Upload artwork, review the traced vector, approve it, and then generate an STL with an interactive 3D preview.
+                      Upload artwork, review the traced vector, and generate an STL with an interactive 3D preview.
                       Built with FastAPI, HTMX, and Tabler CSS for a polished experience.
                     </p>
                     <div class="studio-pill-row mt-4">
@@ -640,7 +691,43 @@
           {% endif %}
 
           <div id="workflow" class="col-12">
-            {% if session is none %}
+            <div class="studio-stage-nav">
+              <a class="studio-stage-link {% if view_stage == 'upload' %}is-active{% endif %}" href="/">
+                <i class="ti ti-upload"></i>
+                <div>
+                  <strong>Upload</strong>
+                  <span>Choose your source artwork</span>
+                </div>
+              </a>
+              {% if session is not none %}
+              <a class="studio-stage-link {% if view_stage == 'preview' %}is-active{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=preview">
+                <i class="ti ti-vector-triangle"></i>
+                <div>
+                  <strong>Vector preview</strong>
+                  <span>Review the traced outline</span>
+                </div>
+              </a>
+              {% if session.result_path is not none %}
+              <a class="studio-stage-link {% if view_stage == 'result' %}is-active{% endif %}" href="{{ url_for('index') }}?token={{ session.token }}&view=result">
+                <i class="ti ti-cube"></i>
+                <div>
+                  <strong>3D preview</strong>
+                  <span>Inspect the generated STL</span>
+                </div>
+              </a>
+              {% else %}
+              <span class="studio-stage-link is-disabled" aria-disabled="true">
+                <i class="ti ti-cube"></i>
+                <div>
+                  <strong>3D preview</strong>
+                  <span>Available after generation</span>
+                </div>
+              </span>
+              {% endif %}
+              {% endif %}
+            </div>
+
+            {% if view_stage == 'upload' %}
             <div class="row g-4">
               <div class="col-12 col-lg-7">
                 <div class="card studio-card studio-step">
@@ -662,7 +749,7 @@
                         </div>
 
                         <label class="studio-upload-zone" for="artwork-input">
-                          <input id="artwork-input" class="form-control form-control-lg" type="file" name="artwork" accept="image/*" required />
+                          <input id="artwork-input" class="form-control form-control-lg" type="file" name="artwork" accept="image/*,.svg" required />
                           <div class="studio-upload-content">
                             <div class="studio-upload-topline">
                               <div class="studio-upload-icon"><i class="ti ti-cloud-upload"></i></div>
@@ -682,7 +769,7 @@
                           </div>
                         </label>
 
-                        <div class="form-hint text-muted-studio mt-2">The app will keep the original artwork and show a traced preview before any STL is generated.</div>
+                        <div class="form-hint text-muted-studio mt-2">The app keeps your uploaded artwork and traces it into a preview before any STL is generated.</div>
                       </div>
 
                       <div class="row g-4">
@@ -702,18 +789,22 @@
                                   <option value="vector" selected>Vector preview</option>
                                   <option value="voxel">Voxel fallback</option>
                                 </select>
+                                <div class="form-hint text-muted-studio mt-1">Vector mode traces clean outlines; voxel mode is a more literal fallback for difficult art.</div>
                               </div>
                               <div class="col-12 col-md-6">
                                 <label class="form-label">Threshold</label>
                                 <input class="form-control" type="number" name="threshold" value="190" step="1" min="0" max="255" />
+                                <div class="form-hint text-muted-studio mt-1">Lower this if thin details disappear; raise it if the preview picks up too much background.</div>
                               </div>
                               <div class="col-12 col-md-6">
                                 <label class="form-label">Resolution</label>
                                 <input class="form-control" type="number" name="resolution" value="0" step="1" min="0" />
+                                <div class="form-hint text-muted-studio mt-1">Leave at `0` to preserve the source size, or set a fixed pixel width for consistent tracing.</div>
                               </div>
                               <div class="col-12 col-md-6">
                                 <label class="form-label">Simplify</label>
                                 <input class="form-control" type="number" name="simplify" value="0.08" step="0.01" min="0" />
+                                <div class="form-hint text-muted-studio mt-1">Increase this to reduce tiny path noise; decrease it to preserve more edge detail.</div>
                               </div>
                             </div>
                           </div>
@@ -730,32 +821,43 @@
 
                             <div class="row g-3">
                               <div class="col-12 col-md-6 col-xl-12">
-                                <label class="form-label">Stamp size</label>
-                                <input class="form-control" type="number" name="size" value="80" step="0.1" min="10" />
+                                <label class="form-label">Max width</label>
+                                <input class="form-control" type="number" name="width" value="{{ defaults.width if defaults.width is not none else defaults.size }}" step="0.1" min="10" />
+                                <div class="form-hint text-muted-studio mt-1">This caps the stamp width in millimeters.</div>
+                              </div>
+                              <div class="col-12 col-md-6 col-xl-12">
+                                <label class="form-label">Max height</label>
+                                <input class="form-control" type="number" name="height" value="{{ defaults.height if defaults.height is not none else defaults.size }}" step="0.1" min="10" />
+                                <div class="form-hint text-muted-studio mt-1">This caps the stamp height in millimeters.</div>
                               </div>
                               <div class="col-12 col-md-6 col-xl-12">
                                 <label class="form-label">Border</label>
                                 <input class="form-control" type="number" name="border" value="2" step="0.1" min="0" />
+                                <div class="form-hint text-muted-studio mt-1">This adds blank margin around the traced art so the stamp has a clean edge.</div>
                               </div>
                               <div class="col-12 col-md-6 col-xl-12">
                                 <label class="form-label">Base</label>
                                 <input class="form-control" type="number" name="base" value="4" step="0.1" min="0.1" />
+                                <div class="form-hint text-muted-studio mt-1">This is the solid backing thickness underneath the artwork.</div>
                               </div>
                               <div class="col-12 col-md-6 col-xl-12">
                                 <label class="form-label">Relief</label>
                                 <input class="form-control" type="number" name="relief" value="2" step="0.1" min="0.1" />
+                                <div class="form-hint text-muted-studio mt-1">This controls how tall the raised artwork sits above the base.</div>
                               </div>
                               <div class="col-12 col-md-6 col-xl-12">
                                 <label class="form-check form-switch mb-0">
                                   <input class="form-check-input" type="checkbox" name="raised_border" checked />
                                   <span class="form-check-label">Raised border</span>
                                 </label>
+                                <div class="form-hint text-muted-studio mt-1">Turn this on to raise the surrounding frame so the artwork stands out.</div>
                               </div>
                               <div class="col-12 col-md-6 col-xl-12">
                                 <label class="form-check form-switch mb-0">
                                   <input class="form-check-input" type="checkbox" name="invert" />
                                   <span class="form-check-label">Invert tones</span>
                                 </label>
+                                <div class="form-hint text-muted-studio mt-1">Use this if the artwork is white on dark instead of dark on light.</div>
                               </div>
                             </div>
                           </div>
@@ -767,7 +869,7 @@
                           <i class="ti ti-badge-check me-2"></i>
                           Generate vector preview
                         </button>
-                        <div class="text-muted-studio">The next step will show the traced outline for approval.</div>
+                        <div class="text-muted-studio">The next step shows the traced outline and lets you move straight to STL generation.</div>
                       </div>
                     </form>
                   </div>
@@ -778,8 +880,8 @@
                 <div class="card studio-card studio-step h-100">
                   <div class="card-header">
                     <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-route me-2"></i>How the flow works</div>
-                      <div class="text-muted-studio">A guided path from upload to approval to 3D review.</div>
+                      <div class="fw-semibold mb-2"><i class="ti ti-route me-2"></i>How the flow works</div>
+                      <div class="text-muted-studio">A guided path from upload to preview to 3D review.</div>
                     </div>
                   </div>
                   <div class="card-body">
@@ -801,93 +903,35 @@
                       <div class="studio-check-item">
                         <div class="studio-icon-chip"><i class="ti ti-cube-send"></i></div>
                         <div>
-                          <div class="fw-semibold">3. Approve and generate</div>
-                          <div class="text-muted-studio">Once approved, generate the STL and inspect it in 3D.</div>
+                          <div class="fw-semibold">3. Generate and inspect</div>
+                          <div class="text-muted-studio">Generate the STL, then inspect it in 3D before downloading.</div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {% elif session.stage == 'preview' %}
-            <div class="row g-4">
-              <div class="col-12 col-xl-7">
-                <div class="card studio-card">
-                  <div class="card-header">
-                    <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-vector-triangle me-2"></i>Vector preview</div>
-                      <div class="text-muted-studio">Approve the traced outline before building the 3D file.</div>
-                    </div>
-                    <div class="preview-badges d-flex gap-2 flex-wrap">
-                      <span class="badge">{{ session.preview_info.mode|capitalize }}</span>
-                      <span class="badge">{{ session.preview_info.contours }} contours</span>
-                      <span class="badge">{{ session.preview_info.area }}</span>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="studio-preview-frame studio-grid-preview p-3 p-lg-4">
-                      <div class="studio-svg-preview">{{ session.preview_svg | safe }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-12 col-xl-5">
-                <div class="card studio-card mb-4">
-                  <div class="card-header">
-                    <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-clipboard-check me-2"></i>Review and approve</div>
-                      <div class="text-muted-studio">The 3D step stays locked until you approve this vector.</div>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="row g-3 mb-4">
-                      <div class="col-6">
-                        <div class="studio-kpi">
-                          <div class="text-muted-studio small">Trace area</div>
-                          <div class="fw-bold">{{ session.preview_info.area }}</div>
-                        </div>
-                      </div>
-                      <div class="col-6">
-                        <div class="studio-kpi">
-                          <div class="text-muted-studio small">Bounds</div>
-                          <div class="fw-bold">{{ session.preview_info.bounds }}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2">
-                      <form method="post" action="/approve" hx-post="/approve" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow">
-                        <input type="hidden" name="token" value="{{ session.token }}" />
-                        <button type="submit" class="btn btn-lg btn-studio text-white">
-                          <i class="ti ti-shield-check me-2"></i>
-                          Approve vector
-                        </button>
-                      </form>
-                      <a class="btn btn-lg btn-soft" href="/">
-                        <i class="ti ti-arrow-back-up me-2"></i>
-                        Start over
-                      </a>
                     </div>
                   </div>
                 </div>
                 <div class="card studio-card">
                   <div class="card-body">
                     <div class="fw-semibold mb-2"><i class="ti ti-bulb me-2"></i>What happens next?</div>
-                    <div class="text-muted-studio">After approval, Stampify Studio will reveal the 3D generation step so you can produce the STL and inspect it interactively.</div>
+                    <div class="text-muted-studio">After generation, Stampify Studio will reveal the 3D preview so you can inspect the STL interactively.</div>
                   </div>
                 </div>
               </div>
             </div>
-            {% elif session.stage == 'approved' %}
+            {% elif view_stage == 'preview' %}
             <div class="row g-4">
               <div class="col-12 col-xl-7">
-                <div class="card studio-card">
+                <div class="card studio-card h-100">
                   <div class="card-header">
                     <div>
-                      <div class="card-title fw-bold mb-1"><i class="ti ti-checkup-list me-2"></i>Vector approved</div>
-                      <div class="text-muted-studio">The vector passed review. Generate the final 3D model when you are ready.</div>
+                      <div class="card-title fw-bold mb-1"><i class="ti ti-vector-triangle me-2"></i>Vector preview</div>
+                      <div class="text-muted-studio">Review the traced outline, then generate the STL when it looks right.</div>
                     </div>
-                    <span class="badge bg-success-lt text-success">Approved</span>
+                    <div class="preview-badges d-flex gap-2 flex-wrap">
+                      <span class="badge">{{ session.preview_info.mode|capitalize }}</span>
+                      <span class="badge">{{ session.preview_info.contours }} contours</span>
+                      <span class="badge">{{ session.preview_info.area }}</span>
+                    </div>
                   </div>
                   <div class="card-body">
                     <div class="studio-preview-frame studio-grid-preview p-3">
@@ -897,28 +941,29 @@
                 </div>
               </div>
               <div class="col-12 col-xl-5">
-                <div class="card studio-card">
+                <div class="card studio-card mb-4">
                   <div class="card-header">
                     <div>
                       <div class="card-title fw-bold mb-1"><i class="ti ti-cube-plus me-2"></i>Generate 3D file</div>
-                      <div class="text-muted-studio">This step turns the approved trace into a stamp-ready STL.</div>
+                      <div class="text-muted-studio">This step turns the traced outline into a stamp-ready STL.</div>
                     </div>
                   </div>
                   <div class="card-body">
                     <div class="row g-3 mb-4">
                       <div class="col-6">
                         <div class="studio-kpi">
-                          <div class="text-muted-studio small">Size</div>
-                          <div class="fw-bold">{{ session.options.size }} mm</div>
+                          <div class="text-muted-studio small">Width</div>
+                          <div class="fw-bold">{{ session.options.width if session.options.width is not none else session.options.size }} mm</div>
                         </div>
                       </div>
                       <div class="col-6">
                         <div class="studio-kpi">
-                          <div class="text-muted-studio small">Mode</div>
-                          <div class="fw-bold">{{ session.options.mode|capitalize }}</div>
+                          <div class="text-muted-studio small">Height</div>
+                          <div class="fw-bold">{{ session.options.height if session.options.height is not none else session.options.size }} mm</div>
                         </div>
                       </div>
                     </div>
+                    <div class="text-muted-studio small mb-3">Mode: {{ session.options.mode|capitalize }}</div>
                     <form method="post" action="/generate" hx-post="/generate" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow">
                       <input type="hidden" name="token" value="{{ session.token }}" />
                       <button type="submit" class="btn btn-lg btn-studio text-white w-100">
@@ -928,9 +973,15 @@
                     </form>
                   </div>
                 </div>
+                <div class="card studio-card">
+                  <div class="card-body">
+                    <div class="fw-semibold mb-2"><i class="ti ti-bulb me-2"></i>What happens next?</div>
+                    <div class="text-muted-studio">After generation, Stampify Studio will reveal the 3D preview so you can inspect the STL interactively.</div>
+                  </div>
+                </div>
               </div>
             </div>
-            {% elif session.stage == 'result' %}
+            {% elif view_stage == 'result' %}
             <div class="row g-4">
               <div class="col-12 col-xl-7">
                 <div class="card studio-card h-100">
@@ -990,7 +1041,7 @@
                 <div class="card studio-card">
                   <div class="card-body">
                     <div class="fw-semibold mb-2"><i class="ti ti-scan me-2"></i>Preview workflow complete</div>
-                    <div class="text-muted-studio">You approved the vector, generated the STL, and can now inspect or download the model.</div>
+                    <div class="text-muted-studio">You generated the STL and can now inspect or download the model.</div>
                   </div>
                 </div>
               </div>
@@ -1001,10 +1052,18 @@
       </div>
     </div>
 
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
     <script type="module">
-      import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-      import { STLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/STLLoader.js';
-      import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+      import * as THREE from 'three';
+      import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
       function mountViewer(container) {
         const meshUrl = container.dataset.meshUrl;
@@ -1139,7 +1198,7 @@
       }
 
       document.addEventListener('DOMContentLoaded', () => refreshViewers());
-      document.body.addEventListener('htmx:afterSwap', (event) => refreshViewers(event.target));
+      document.body.addEventListener('htmx:afterSettle', () => refreshViewers());
     </script>
   </body>
 </html>

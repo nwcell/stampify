@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ink_print import StampOptions, build_stamp_mesh, default_output_path, load_mask, write_stamp
+from ink_print.core import validate_size
 
 
 SAMPLE = Path(__file__).resolve().parents[1] / "sample" / "xmas-cowboy.jpeg"
@@ -16,6 +17,17 @@ def test_build_stamp_mesh_vector_is_watertight() -> None:
     mesh = build_stamp_mesh(SAMPLE, StampOptions())
     assert mesh.is_watertight
     assert round(float(max(mesh.extents)), 1) == 80.0
+
+
+def test_build_stamp_mesh_respects_rectangular_dimensions() -> None:
+    mesh = build_stamp_mesh(SAMPLE, StampOptions(width=90.0, height=70.0))
+    assert mesh.is_watertight
+    assert round(float(mesh.extents[0]), 1) == 90.0
+    assert round(float(mesh.extents[1]), 1) == 70.0
+
+
+def test_validate_size_uses_the_larger_inner_dimension() -> None:
+    assert validate_size(StampOptions(width=90.0, height=70.0, border=2.0)) == 86.0
 
 
 def test_write_stamp_writes_expected_file(tmp_path: Path) -> None:

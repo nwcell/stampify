@@ -63,9 +63,10 @@ uv run --extra web python -m ink_print.webapp
 The web app guides you through:
 
 - Upload artwork.
-- Review and approve the generated SVG/vector preview.
+- Review the generated SVG/vector preview.
 - Generate the 3D STL.
 - Inspect the result in an interactive 3D viewer, then download it.
+- SVG artwork is supported alongside raster images.
 
 ## Python API
 

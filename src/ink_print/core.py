@@ -45,6 +45,7 @@ _SVG_MIN_CUBIC_SEGMENTS = 16
 _SVG_MIN_QUADRATIC_SEGMENTS = 12
 _SVG_MIN_ARC_SEGMENTS = 12
 _SVG_MIN_ELLIPSE_SEGMENTS = 96
+_SVG_MIN_RENDER_SIDE = 512
 
 
 def _parse_svg_number(value: str | None, default: float) -> float:
@@ -594,7 +595,10 @@ def _parse_svg_path(
     return subpaths
 
 
-def _svg_canvas_size(root: ET.Element) -> tuple[int, int, list[tuple[float, float, float, float, float, float]]]:
+def _svg_canvas_size(
+    root: ET.Element,
+    minimum_side: int = 1,
+) -> tuple[int, int, list[tuple[float, float, float, float, float, float]]]:
     view_box = root.attrib.get("viewBox")
     if view_box:
         minx, miny, vb_width, vb_height = [float(part) for part in re.split(r"[\s,]+", view_box.strip()) if part]
@@ -605,6 +609,10 @@ def _svg_canvas_size(root: ET.Element) -> tuple[int, int, list[tuple[float, floa
 
     width = max(1, round(_parse_svg_number(root.attrib.get("width"), vb_width)))
     height = max(1, round(_parse_svg_number(root.attrib.get("height"), vb_height)))
+    if minimum_side > 1:
+        render_scale = max(1.0, minimum_side / max(width, height))
+        width = max(1, round(width * render_scale))
+        height = max(1, round(height * render_scale))
     sx = width / vb_width if vb_width else 1.0
     sy = height / vb_height if vb_height else 1.0
     transforms = [_matrix_scale(sx, sy), _matrix_translate(-minx, -miny)]
@@ -699,13 +707,13 @@ def _draw_svg_element(mask: Image.Image, element: ET.Element, inherited: dict[st
                     drawer.line(points, fill=1, width=max(1, round(_parse_svg_number(state.get("stroke-width"), 1.0))))
 
 
-def _rasterize_svg(image_path: Path) -> Image.Image:
+def _rasterize_svg(image_path: Path, minimum_side: int = 1) -> Image.Image:
     try:
         root = ET.parse(image_path).getroot()
     except ET.ParseError as exc:
         raise ValueError(f"Could not parse SVG artwork: {exc}") from exc
 
-    width, height, transforms = _svg_canvas_size(root)
+    width, height, transforms = _svg_canvas_size(root, minimum_side=minimum_side)
     mask = Image.new("1", (width, height), 0)
     _draw_svg_element(
         mask,
@@ -727,7 +735,7 @@ def _load_artwork_image(image: str | Path) -> Image.Image:
     image_path = Path(image)
 
     if image_path.suffix.lower() == ".svg":
-        return _rasterize_svg(image_path)
+        return _rasterize_svg(image_path, minimum_side=_SVG_MIN_RENDER_SIDE)
 
     with Image.open(image_path) as raster_image:
         return raster_image.copy()

@@ -130,6 +130,23 @@ def test_rasterize_svg_handles_rotated_ellipses(tmp_path: Path) -> None:
     assert image.getpixel((70, 50)) == 255
 
 
+def test_load_mask_upsamples_small_svg_viewbox(tmp_path: Path) -> None:
+    svg_path = tmp_path / "upsampled.svg"
+    svg_path.write_text(
+        """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="black" />
+        </svg>
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    mask = load_mask(svg_path, StampOptions())
+
+    assert mask.shape[0] > 300
+    assert mask.shape[1] > 300
+
+
 def test_parse_svg_path_increases_arc_sampling_when_scaled() -> None:
     path_data = "M 50 10 A 40 40 0 0 1 90 50"
 

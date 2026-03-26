@@ -5,7 +5,14 @@ from pathlib import Path
 import numpy as np
 
 from ink_print import StampOptions, build_stamp_mesh, default_output_path, load_mask, write_stamp
-from ink_print.core import _rasterize_svg, trace_geometry, validate_size
+from ink_print.core import (
+    _matrix_scale,
+    _parse_svg_path,
+    _rasterize_svg,
+    _sample_svg_ellipse,
+    trace_geometry,
+    validate_size,
+)
 
 
 SAMPLE = Path(__file__).resolve().parents[1] / "sample" / "xmas-cowboy.jpeg"
@@ -121,6 +128,21 @@ def test_rasterize_svg_handles_rotated_ellipses(tmp_path: Path) -> None:
     image = _rasterize_svg(svg_path)
     assert image.getpixel((70, 70)) == 0
     assert image.getpixel((70, 50)) == 255
+
+
+def test_parse_svg_path_increases_arc_sampling_when_scaled() -> None:
+    path_data = "M 50 10 A 40 40 0 0 1 90 50"
+
+    normal = _parse_svg_path(path_data)
+    scaled = _parse_svg_path(path_data, [_matrix_scale(8)])
+
+    assert len(scaled[0][0]) >= len(normal[0][0]) * 4
+
+
+def test_sample_svg_ellipse_increases_sampling_when_scaled() -> None:
+    points = _sample_svg_ellipse(50, 50, 35, 10, [_matrix_scale(8)])
+
+    assert len(points) > 200
 
 
 def test_rasterize_svg_applies_nested_transforms_in_svg_order(tmp_path: Path) -> None:

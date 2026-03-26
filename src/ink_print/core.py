@@ -40,6 +40,11 @@ def default_output_path(image: str | Path) -> Path:
 
 _SVG_COMMAND_RE = re.compile(r"([MmZzLlHhVvCcSsQqTtAa])|([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)")
 _SVG_TRANSFORM_RE = re.compile(r"([a-zA-Z]+)\(([^)]*)\)")
+_SVG_TARGET_SEGMENT_LENGTH = 2.5
+_SVG_MIN_CUBIC_SEGMENTS = 16
+_SVG_MIN_QUADRATIC_SEGMENTS = 12
+_SVG_MIN_ARC_SEGMENTS = 12
+_SVG_MIN_ELLIPSE_SEGMENTS = 96
 
 
 def _parse_svg_number(value: str | None, default: float) -> float:
@@ -137,13 +142,59 @@ def _apply_svg_transforms(points: list[tuple[float, float]], transforms: list[tu
     return [_apply_svg_transform(point, transforms) for point in points]
 
 
+def _svg_point_distance(start: tuple[float, float], end: tuple[float, float]) -> float:
+    return math.hypot(end[0] - start[0], end[1] - start[1])
+
+
+def _svg_polyline_length(
+    points: list[tuple[float, float]],
+    transforms: list[tuple[float, float, float, float, float, float]] | None = None,
+) -> float:
+    sampled_points = _apply_svg_transforms(points, transforms) if transforms else points
+    return sum(_svg_point_distance(start, end) for start, end in zip(sampled_points, sampled_points[1:]))
+
+
+def _svg_transform_scale(transforms: list[tuple[float, float, float, float, float, float]] | None) -> float:
+    if not transforms:
+        return 1.0
+
+    origin = _apply_svg_transform((0.0, 0.0), transforms)
+    scale = 1.0
+    for vector in (
+        (1.0, 0.0),
+        (0.0, 1.0),
+        (math.sqrt(0.5), math.sqrt(0.5)),
+        (math.sqrt(0.5), -math.sqrt(0.5)),
+    ):
+        point = _apply_svg_transform(vector, transforms)
+        scale = max(scale, math.hypot(point[0] - origin[0], point[1] - origin[1]))
+    return scale
+
+
+def _ellipse_circumference(rx: float, ry: float) -> float:
+    rx = abs(rx)
+    ry = abs(ry)
+    if rx == 0 or ry == 0:
+        return 0.0
+    if rx == ry:
+        return 2.0 * math.pi * rx
+
+    h = ((rx - ry) ** 2) / ((rx + ry) ** 2)
+    return math.pi * (rx + ry) * (1.0 + (3.0 * h) / (10.0 + math.sqrt(4.0 - 3.0 * h)))
+
+
 def _sample_cubic(
     start: tuple[float, float],
     control1: tuple[float, float],
     control2: tuple[float, float],
     end: tuple[float, float],
-    segments: int = 16,
+    transforms: list[tuple[float, float, float, float, float, float]] | None = None,
 ) -> list[tuple[float, float]]:
+    length = _svg_polyline_length([start, control1, control2, end], transforms)
+    if length == 0:
+        return [end]
+
+    segments = max(_SVG_MIN_CUBIC_SEGMENTS, math.ceil(length / _SVG_TARGET_SEGMENT_LENGTH))
     points: list[tuple[float, float]] = []
     for index in range(1, segments + 1):
         t = index / segments
@@ -158,8 +209,13 @@ def _sample_quadratic(
     start: tuple[float, float],
     control: tuple[float, float],
     end: tuple[float, float],
-    segments: int = 12,
+    transforms: list[tuple[float, float, float, float, float, float]] | None = None,
 ) -> list[tuple[float, float]]:
+    length = _svg_polyline_length([start, control, end], transforms)
+    if length == 0:
+        return [end]
+
+    segments = max(_SVG_MIN_QUADRATIC_SEGMENTS, math.ceil(length / _SVG_TARGET_SEGMENT_LENGTH))
     points: list[tuple[float, float]] = []
     for index in range(1, segments + 1):
         t = index / segments
@@ -196,6 +252,7 @@ def _sample_svg_arc(
     large_arc: bool,
     sweep: bool,
     end: tuple[float, float],
+    transforms: list[tuple[float, float, float, float, float, float]] | None = None,
 ) -> list[tuple[float, float]]:
     if start == end:
         return []
@@ -254,7 +311,11 @@ def _sample_svg_arc(
     elif sweep and delta_theta < 0:
         delta_theta += 2.0 * math.pi
 
-    segments = max(8, math.ceil(abs(delta_theta) / (math.pi / 12.0)))
+    arc_length = abs(delta_theta) * max(rx, ry) * _svg_transform_scale(transforms)
+    if arc_length == 0:
+        return [end]
+
+    segments = max(_SVG_MIN_ARC_SEGMENTS, math.ceil(arc_length / _SVG_TARGET_SEGMENT_LENGTH))
     points: list[tuple[float, float]] = []
     for index in range(1, segments + 1):
         theta = theta1 + delta_theta * (index / segments)
@@ -270,8 +331,10 @@ def _sample_svg_ellipse(
     rx: float,
     ry: float,
     transforms: list[tuple[float, float, float, float, float, float]],
-    segments: int = 96,
 ) -> list[tuple[float, float]]:
+    scale = _svg_transform_scale(transforms)
+    circumference = _ellipse_circumference(rx * scale, ry * scale)
+    segments = max(_SVG_MIN_ELLIPSE_SEGMENTS, math.ceil(circumference / _SVG_TARGET_SEGMENT_LENGTH))
     points: list[tuple[float, float]] = []
     for index in range(segments):
         theta = (2.0 * math.pi * index) / segments
@@ -334,7 +397,10 @@ def _draw_svg_geometry(mask: Image.Image, geometry) -> None:
                 drawer.polygon(hole, fill=0)
 
 
-def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], bool]]:
+def _parse_svg_path(
+    path_data: str,
+    transforms: list[tuple[float, float, float, float, float, float]] | None = None,
+) -> list[tuple[list[tuple[float, float]], bool]]:
     tokens: list[str | float] = []
     for command, number in _SVG_COMMAND_RE.findall(path_data):
         if command:
@@ -447,7 +513,7 @@ def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], boo
                 c1 = (c1[0] + current[0], c1[1] + current[1])
                 c2 = (c2[0] + current[0], c2[1] + current[1])
                 end = (end[0] + current[0], end[1] + current[1])
-            points.extend(_sample_cubic(current, c1, c2, end))
+            points.extend(_sample_cubic(current, c1, c2, end, transforms=transforms))
             current = end
             last_cubic_control = c2
             last_quadratic_control = None
@@ -466,7 +532,7 @@ def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], boo
             if not absolute:
                 c2 = (c2[0] + current[0], c2[1] + current[1])
                 end = (end[0] + current[0], end[1] + current[1])
-            points.extend(_sample_cubic(current, c1, c2, end))
+            points.extend(_sample_cubic(current, c1, c2, end, transforms=transforms))
             current = end
             last_cubic_control = c2
             last_quadratic_control = None
@@ -481,7 +547,7 @@ def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], boo
             if not absolute:
                 control = (control[0] + current[0], control[1] + current[1])
                 end = (end[0] + current[0], end[1] + current[1])
-            points.extend(_sample_quadratic(current, control, end))
+            points.extend(_sample_quadratic(current, control, end, transforms=transforms))
             current = end
             last_quadratic_control = control
             last_cubic_control = None
@@ -498,7 +564,7 @@ def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], boo
             index += 2
             if not absolute:
                 end = (end[0] + current[0], end[1] + current[1])
-            points.extend(_sample_quadratic(current, control, end))
+            points.extend(_sample_quadratic(current, control, end, transforms=transforms))
             current = end
             last_quadratic_control = control
             last_cubic_control = None
@@ -516,7 +582,7 @@ def _parse_svg_path(path_data: str) -> list[tuple[list[tuple[float, float]], boo
             index += 7
             if not absolute:
                 end = (end[0] + current[0], end[1] + current[1])
-            points.extend(_sample_svg_arc(current, rx, ry, rotation, large_arc, sweep, end))
+            points.extend(_sample_svg_arc(current, rx, ry, rotation, large_arc, sweep, end, transforms=transforms))
             current = end
             last_cubic_control = None
             last_quadratic_control = None
@@ -623,7 +689,7 @@ def _draw_svg_element(mask: Image.Image, element: ET.Element, inherited: dict[st
         path_data = element.attrib.get("d", "")
         if not path_data.strip():
             return
-        subpaths = [(transform_points(subpath_points), closed) for subpath_points, closed in _parse_svg_path(path_data)]
+        subpaths = [(transform_points(subpath_points), closed) for subpath_points, closed in _parse_svg_path(path_data, transforms)]
         if fill_enabled:
             geometry = _svg_subpaths_to_geometry(subpaths, state.get("fill-rule"))
             _draw_svg_geometry(mask, geometry)

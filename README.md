@@ -58,7 +58,7 @@ The dev server reloads automatically when you edit files.
 The web app guides you through:
 
 - Upload artwork.
-- Review the generated SVG/vector preview on the same page.
+- Prepare the SVG/vector output on the same page.
 - Generate the 3D STL.
 - Inspect the result in an interactive 3D viewer, then download it.
 - SVG artwork is supported alongside raster images.

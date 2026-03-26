@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -28,39 +27,26 @@ def _preview_payload() -> dict[str, object]:
     }
 
 
-def _extract_token(html: str) -> str:
-    match = re.search(r'name="token" value="([^"]+)"', html)
-    if not match:
-        raise AssertionError("Expected a session token in the rendered HTML")
-    return match.group(1)
-
-
-def test_webapp_direct_preview_to_generation_flow() -> None:
+def test_webapp_preview_and_generate_are_stateless() -> None:
     client = TestClient(app)
 
     root = client.get("/")
     assert root.status_code == 200
-    sample_path = str(app.url_path_for("sample_artwork"))
-    assert "Make stamps from images" in root.text
-    assert "Small stamps" in root.text
-    assert "Large wood-carved stamps" in root.text
-    assert "Starter sample only. Upload your own picture later." in root.text
-    assert sample_path in root.text
-    assert "Upload artwork, tune the grouped settings below" not in root.text
-    assert "Preview" in root.text
-    assert "Stampify Studio" in root.text
-    assert "SVG Preview" in root.text
-    assert "No SVG preview yet" in root.text
-    assert 'title="Generate a preview first"' in root.text
-    assert 'disabled aria-disabled="true"' in root.text
-    assert "Result" not in root.text
+    assert 'data-render-stage="idle"' in root.text
+    assert "Draft saved" not in root.text
+    assert "Generate STL" in root.text
+    assert "No trace yet" in root.text
+    assert 'stampify-boot-id' not in root.text
+    assert '/__reload-id' not in root.text
+    assert '/reset' not in root.text
+    assert str(app.url_path_for("sample_artwork")) not in root.text
+    assert 'data-start-over-button="true"' in root.text
+    assert "HX-Push-Url" not in root.headers
     assert f'value="{CLI_DEFAULT_OPTIONS.threshold}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.resolution}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.border}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.relief}"' in root.text
-    assert 'name="width" value="80.0"' in root.text
-    assert 'name="height" value="80.0"' in root.text
-    assert "width, height, or both" in root.text.lower()
+    assert 'data:image/jpeg;base64,' in root.text
 
     with SAMPLE.open("rb") as image:
         preview = client.post(
@@ -68,93 +54,63 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
             data=_preview_payload(),
             files={"artwork": (SAMPLE.name, image, "image/jpeg")},
         )
+
     assert preview.status_code == 200
-    assert "Generate STL" in preview.text
-    assert "Preview" in preview.text
-    assert "SVG Preview" in preview.text
-    assert "Generated" in preview.text
-    assert "No SVG preview yet" not in preview.text
-    assert "Download STL" not in preview.text
-    assert "name=\"token\"" in preview.text
-    assert "90.0 × 90.0 mm" in preview.text
-    assert '<rect x="0" y="0" width="100%" height="100%" fill="#fff" />' in preview.text
-    assert 'fill="#000" fill-rule="evenodd" stroke="#000"' in preview.text
-    assert "linearGradient" not in preview.text
-    assert "feDropShadow" not in preview.text
-    assert "Max width" in root.text
-    assert "Max height" in root.text
-    assert "mm" in root.text
+    assert 'data-render-stage="preview"' in preview.text
+    assert "Draft saved" in preview.text
+    assert 'data-artwork-url="data:image/jpeg;base64,' in preview.text
+    assert "xmas-cowboy.jpeg" in preview.text
+    assert 'data-submit-stage="preview"' in preview.text
+    assert 'data-submit-stage="result"' in preview.text
+    assert "No trace yet" not in preview.text
+    assert "HX-Push-Url" not in preview.headers
+    assert 'title="Prepare first"' not in preview.text
 
-    token = _extract_token(preview.text)
-    assert f'/artifact/{token}/upload' in preview.text
+    with SAMPLE.open("rb") as image:
+        generated = client.post(
+            "/generate",
+            data=_preview_payload(),
+            files={"artwork": (SAMPLE.name, image, "image/jpeg")},
+        )
 
-    upload = client.get(f"/artifact/{token}/upload")
-    assert upload.status_code == 200
-    assert upload.headers["content-type"].startswith("image/")
-
-    session_view = client.get(f"/?token={token}")
-    assert session_view.status_code == 200
-    assert "Session saved" in session_view.text
-    assert "Reset to blank" in session_view.text
-    assert "SVG Preview" in session_view.text
-    assert "Generate STL" in session_view.text
-    assert "No SVG preview yet" not in session_view.text
-    assert "Download STL" not in session_view.text
-
-    generated = client.post("/generate", data={"token": token})
     assert generated.status_code == 200
-    assert "Download STL" in generated.text
-    assert "data-mesh-url" in generated.text
+    assert 'data-render-stage="result"' in generated.text
+    assert 'data-mesh-url="data:model/stl;base64,' in generated.text
+    assert 'download="xmas-cowboy-stamp.stl"' in generated.text
     assert 'data-auto-scroll-result="true"' in generated.text
-    assert 'id="generated-stl"' in generated.text
-
-    generated_view = client.get(f"/?token={token}")
-    assert generated_view.status_code == 200
-    assert "Download STL" in generated_view.text
-    assert "data-mesh-url" in generated_view.text
-    assert "Result" not in generated_view.text
-
-    reset_view = client.post("/reset", data={"token": token})
-    assert reset_view.status_code == 200
-    assert "Session saved" not in reset_view.text
-    assert "Reset to blank" not in reset_view.text
-    assert "Generate STL" in reset_view.text
-    assert 'disabled aria-disabled="true"' in reset_view.text
-
-    expired_generate = client.post("/generate", data={"token": token})
-    assert expired_generate.status_code == 200
-    assert "That preview session expired" in expired_generate.text
+    assert "Download STL" in generated.text
+    assert "HX-Push-Url" not in generated.headers
 
 
-def test_webapp_main_enables_reload_by_default(monkeypatch) -> None:
-    captured: dict[str, object] = {}
-
-    def fake_run(*args, **kwargs) -> None:
-        captured["args"] = args
-        captured["kwargs"] = kwargs
-
-    monkeypatch.setattr(webapp_app.uvicorn, "run", fake_run)
-
-    assert webapp_app.main() == 0
-    assert captured["args"] == (webapp_app.WEBAPP_IMPORT,)
-    assert captured["kwargs"]["reload"] is True
-    assert captured["kwargs"]["reload_dirs"] == [str(webapp_app.APP_DIR.parent.parent)]
-
-
-def test_webapp_exposes_reload_boot_id() -> None:
+def test_webapp_preview_error_preserves_upload_thumbnail() -> None:
     client = TestClient(app)
 
-    root = client.get("/")
-    assert root.status_code == 200
+    with SAMPLE.open("rb") as image:
+        response = client.post(
+            "/preview",
+            data={
+                "width": "",
+                "height": "",
+                "border": "0.5",
+                "base": "4",
+                "relief": "1",
+                "threshold": "190",
+                "resolution": "0",
+                "simplify": "0.08",
+                "raised_border": "on",
+                "invert": "",
+            },
+            files={"artwork": (SAMPLE.name, image, "image/jpeg")},
+        )
 
-    meta_match = re.search(r'<meta name="stampify-boot-id" content="([^"]+)" />', root.text)
-    assert meta_match is not None
-
-    reload_response = client.get("/__reload-id")
-    assert reload_response.status_code == 200
-    assert reload_response.json()["boot_id"] == meta_match.group(1)
-    assert "/__reload-id" in root.text
-    assert "window.location.reload()" in root.text
+    assert response.status_code == 200
+    assert "Please enter at least one max dimension: width, height, or both." in response.text
+    assert 'data-render-stage="preview"' in response.text
+    assert 'data-artwork-url="data:image/jpeg;base64,' in response.text
+    assert "Draft saved" in response.text
+    assert "No trace yet" in response.text
+    assert 'title="Prepare first"' in response.text
+    assert 'data-submit-stage="result"' in response.text
 
 
 def test_webapp_accepts_svg_artwork() -> None:
@@ -170,10 +126,25 @@ def test_webapp_accepts_svg_artwork() -> None:
         files={"artwork": ("badge.svg", svg_artwork.encode("utf-8"), "image/svg+xml")},
     )
     assert preview.status_code == 200
+    assert 'data-render-stage="preview"' in preview.text
+    assert 'data-artwork-url="data:image/svg+xml;base64,' in preview.text
     assert "Generate STL" in preview.text
-    assert "SVG Preview" in preview.text
-    assert "Download STL" not in preview.text
-    assert "name=\"token\"" in preview.text
+    assert "No trace yet" not in preview.text
+
+
+def test_webapp_main_enables_reload_by_default(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run(*args, **kwargs) -> None:
+        captured["args"] = args
+        captured["kwargs"] = kwargs
+
+    monkeypatch.setattr(webapp_app.uvicorn, "run", fake_run)
+
+    assert webapp_app.main() == 0
+    assert captured["args"] == (webapp_app.WEBAPP_IMPORT,)
+    assert captured["kwargs"]["reload"] is True
+    assert captured["kwargs"]["reload_dirs"] == [str(webapp_app.APP_DIR.parent.parent)]
 
 
 def test_webapp_serves_sample_artwork() -> None:

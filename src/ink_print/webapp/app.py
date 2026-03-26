@@ -26,6 +26,8 @@ from ink_print.core import (
 )
 
 APP_DIR = Path(__file__).resolve().parent
+REPO_DIR = APP_DIR.parent.parent.parent
+SAMPLE_ARTWORK_PATH = REPO_DIR / "sample" / "xmas-cowboy.jpeg"
 TEMPLATES = Jinja2Templates(directory=str(APP_DIR / "templates"))
 app = FastAPI(
     title="Stampify Studio",
@@ -238,6 +240,14 @@ def index(
 @app.get("/__reload-id", name="reload_id")
 def reload_id() -> dict[str, str]:
     return {"boot_id": SERVER_BOOT_ID}
+
+
+@app.get("/sample/xmas-cowboy.jpeg", name="sample_artwork")
+def sample_artwork() -> FileResponse:
+    if not SAMPLE_ARTWORK_PATH.exists():
+        raise HTTPException(status_code=404, detail="That sample artwork is no longer available.")
+
+    return FileResponse(SAMPLE_ARTWORK_PATH, media_type=_guess_media_type(SAMPLE_ARTWORK_PATH))
 
 
 @app.post("/preview", response_class=HTMLResponse)

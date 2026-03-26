@@ -40,6 +40,13 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
 
     root = client.get("/")
     assert root.status_code == 200
+    sample_path = str(app.url_path_for("sample_artwork"))
+    assert "Make stamps from images" in root.text
+    assert "Small stamps" in root.text
+    assert "Large wood-carved stamps" in root.text
+    assert "Starter sample only. Upload your own picture later." in root.text
+    assert sample_path in root.text
+    assert "Upload artwork, tune the grouped settings below" not in root.text
     assert "Preview" in root.text
     assert "Stampify Studio" in root.text
     assert "SVG Preview" in root.text
@@ -111,7 +118,8 @@ def test_webapp_direct_preview_to_generation_flow() -> None:
     assert reset_view.status_code == 200
     assert "Session saved" not in reset_view.text
     assert "Reset to blank" not in reset_view.text
-    assert "Generate STL" not in reset_view.text
+    assert "Generate STL" in reset_view.text
+    assert 'disabled aria-disabled="true"' in reset_view.text
 
     expired_generate = client.post("/generate", data={"token": token})
     assert expired_generate.status_code == 200
@@ -166,3 +174,12 @@ def test_webapp_accepts_svg_artwork() -> None:
     assert "SVG Preview" in preview.text
     assert "Download STL" not in preview.text
     assert "name=\"token\"" in preview.text
+
+
+def test_webapp_serves_sample_artwork() -> None:
+    client = TestClient(app)
+
+    sample = client.get(str(app.url_path_for("sample_artwork")))
+    assert sample.status_code == 200
+    assert sample.headers["content-type"].startswith("image/jpeg")
+    assert sample.content == SAMPLE.read_bytes()

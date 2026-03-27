@@ -16,9 +16,9 @@ from fastapi.templating import Jinja2Templates
 from ink_print.cli import DEFAULT_OPTIONS as CLI_DEFAULT_OPTIONS
 from ink_print.core import (
     StampOptions,
-    build_stamp_mesh_from_mask,
-    load_mask,
-    trace_geometry,
+    build_stamp_mesh_from_geometry,
+    resolve_artwork,
+    iter_polygons,
     validate_dimensions,
 )
 
@@ -44,9 +44,6 @@ class DraftValues:
     border: str
     base: str
     relief: str
-    threshold: str
-    resolution: str
-    simplify: str
     raised_border: bool
     invert: bool
 
@@ -89,15 +86,6 @@ def _parse_float(value: str | None, default: float) -> float:
     return default if parsed is None else parsed
 
 
-def _parse_int(value: str | None, default: int) -> int:
-    if value is None:
-        return default
-    stripped = value.strip()
-    if not stripped:
-        return default
-    return int(stripped)
-
-
 def _data_url(media_type: str, payload: bytes) -> str:
     return f"data:{media_type};base64,{b64encode(payload).decode('ascii')}"
 
@@ -120,9 +108,6 @@ def _form_values_from_defaults(render_stage: Literal["idle", "preview", "result"
         border=f"{DEFAULT_OPTIONS.border}",
         base=f"{DEFAULT_OPTIONS.base}",
         relief=f"{DEFAULT_OPTIONS.relief}",
-        threshold=f"{DEFAULT_OPTIONS.threshold}",
-        resolution=f"{DEFAULT_OPTIONS.resolution}",
-        simplify=f"{DEFAULT_OPTIONS.simplify}",
         raised_border=DEFAULT_OPTIONS.raised_border,
         invert=DEFAULT_OPTIONS.invert,
     )
@@ -135,9 +120,6 @@ def _form_values_from_submission(
     border: str | None,
     base: str | None,
     relief: str | None,
-    threshold: str | None,
-    resolution: str | None,
-    simplify: str | None,
     raised_border: str | None,
     invert: str | None,
 ) -> DraftValues:
@@ -149,9 +131,6 @@ def _form_values_from_submission(
         border=border if border is not None else f"{DEFAULT_OPTIONS.border}",
         base=base if base is not None else f"{DEFAULT_OPTIONS.base}",
         relief=relief if relief is not None else f"{DEFAULT_OPTIONS.relief}",
-        threshold=threshold if threshold is not None else f"{DEFAULT_OPTIONS.threshold}",
-        resolution=resolution if resolution is not None else f"{DEFAULT_OPTIONS.resolution}",
-        simplify=simplify if simplify is not None else f"{DEFAULT_OPTIONS.simplify}",
         raised_border=bool(raised_border and raised_border.strip()),
         invert=bool(invert and invert.strip()),
     )
@@ -165,72 +144,26 @@ def _build_options(values: DraftValues) -> StampOptions:
         border=_parse_float(values.border, DEFAULT_OPTIONS.border),
         base=_parse_float(values.base, DEFAULT_OPTIONS.base),
         relief=_parse_float(values.relief, DEFAULT_OPTIONS.relief),
-        simplify=_parse_float(values.simplify, DEFAULT_OPTIONS.simplify),
+        simplify=DEFAULT_OPTIONS.simplify,
         min_area=DEFAULT_OPTIONS.min_area,
-        threshold=_parse_int(values.threshold, DEFAULT_OPTIONS.threshold),
-        resolution=_parse_int(values.resolution, DEFAULT_OPTIONS.resolution),
+        threshold=DEFAULT_OPTIONS.threshold,
+        resolution=DEFAULT_OPTIONS.resolution,
         raised_border=values.raised_border,
         invert=values.invert,
         mirror=DEFAULT_OPTIONS.mirror,
     )
 
 
-def _iter_polygons(geometry) -> list:
-    if geometry.is_empty:
-        return []
-    if geometry.geom_type == "Polygon":
-        return [geometry]
-    if hasattr(geometry, "geoms"):
-        polygons: list = []
-        for geom in geometry.geoms:
-            polygons.extend(_iter_polygons(geom))
-        return polygons
-    return []
-
-
-def _svg_path_from_polygon(polygon, minx: float, maxy: float, pad: float) -> str:
-    def convert(coords: list[tuple[float, float]]) -> str:
-        return " ".join(f"{x - minx + pad:.2f},{maxy - y + pad:.2f}" for x, y in coords)
-
-    parts = [f"M {convert(list(polygon.exterior.coords))} Z"]
-    for ring in polygon.interiors:
-        parts.append(f"M {convert(list(ring.coords))} Z")
-    return " ".join(parts)
-
-
-def _render_preview_svg(geometry) -> str:
-    polygons = _iter_polygons(geometry)
-    if not polygons:
-        raise ValueError("No contours were found in the artwork.")
-
-    minx, _miny, maxx, maxy = geometry.bounds
-    width = max(maxx - minx, 1.0)
-    height = max(maxy - _miny, 1.0)
-    pad = max(width, height) * 0.08
-    total_width = width + 2 * pad
-    total_height = height + 2 * pad
-    paths = [_svg_path_from_polygon(polygon, minx, maxy, pad) for polygon in polygons]
-
-    return f"""
-    <svg viewBox=\"0 0 {total_width:.2f} {total_height:.2f}\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Vector output\">
-      <rect x=\"0\" y=\"0\" width=\"100%\" height=\"100%\" fill=\"#fff\" />
-      <path d=\"{' '.join(paths)}\" fill=\"#000\" fill-rule=\"evenodd\" stroke=\"#000\" stroke-width=\"0.8\" stroke-linejoin=\"round\" />
-    </svg>
-    """.strip()
-
-
 def _build_preview_artifacts(image_path: Path, options: StampOptions) -> tuple[object, str, dict[str, str]]:
     preview_width, preview_height, _, _ = validate_dimensions(options)
-    mask = load_mask(image_path, options)
-    geometry = trace_geometry(mask)
-    preview_svg = _render_preview_svg(geometry)
+    resolved = resolve_artwork(image_path, options)
     preview_info = {
-        "contours": str(len(_iter_polygons(geometry))),
-        "area": f"{geometry.area:.2f} px²",
-        "bounds": f"{geometry.bounds[2] - geometry.bounds[0]:.1f} px × {geometry.bounds[3] - geometry.bounds[1]:.1f} px",
+        "contours": str(len(iter_polygons(resolved.geometry))),
+        "area": f"{resolved.geometry.area:.2f} mm²",
+        "bounds": f"{resolved.geometry.bounds[2] - resolved.geometry.bounds[0]:.1f} mm × {resolved.geometry.bounds[3] - resolved.geometry.bounds[1]:.1f} mm",
         "dimensions": f"{preview_width:.1f} × {preview_height:.1f} mm",
     }
-    return mask, preview_svg, preview_info
+    return resolved, resolved.preview_svg, preview_info
 
 
 def _render_page(
@@ -290,9 +223,6 @@ async def preview(
     border: str = Form(str(DEFAULT_OPTIONS.border)),
     base: str = Form(str(DEFAULT_OPTIONS.base)),
     relief: str = Form(str(DEFAULT_OPTIONS.relief)),
-    threshold: str = Form(str(DEFAULT_OPTIONS.threshold)),
-    resolution: str = Form(str(DEFAULT_OPTIONS.resolution)),
-    simplify: str = Form(str(DEFAULT_OPTIONS.simplify)),
     raised_border: str = Form(""),
     invert: str = Form(""),
 ) -> HTMLResponse:
@@ -303,9 +233,6 @@ async def preview(
         border,
         base,
         relief,
-        threshold,
-        resolution,
-        simplify,
         raised_border,
         invert,
     )
@@ -351,7 +278,7 @@ async def preview(
         upload_path = Path(tmpdir) / upload_name
         upload_path.write_bytes(payload)
         try:
-            mask, preview_svg, preview_info = _build_preview_artifacts(upload_path, options)
+            _resolved, preview_svg, preview_info = _build_preview_artifacts(upload_path, options)
         except (FileNotFoundError, OSError, ValueError) as exc:
             return _render_page(
                 request,
@@ -366,7 +293,6 @@ async def preview(
                 ),
             )
 
-    _ = mask
     session = WorkflowState(
         render_stage="preview",
         artwork_name=upload_name,
@@ -386,9 +312,6 @@ async def generate(
     border: str = Form(str(DEFAULT_OPTIONS.border)),
     base: str = Form(str(DEFAULT_OPTIONS.base)),
     relief: str = Form(str(DEFAULT_OPTIONS.relief)),
-    threshold: str = Form(str(DEFAULT_OPTIONS.threshold)),
-    resolution: str = Form(str(DEFAULT_OPTIONS.resolution)),
-    simplify: str = Form(str(DEFAULT_OPTIONS.simplify)),
     raised_border: str = Form(""),
     invert: str = Form(""),
 ) -> HTMLResponse:
@@ -399,9 +322,6 @@ async def generate(
         border,
         base,
         relief,
-        threshold,
-        resolution,
-        simplify,
         raised_border,
         invert,
     )
@@ -447,8 +367,8 @@ async def generate(
         upload_path = Path(tmpdir) / upload_name
         upload_path.write_bytes(payload)
         try:
-            mask, preview_svg, preview_info = _build_preview_artifacts(upload_path, options)
-            mesh = build_stamp_mesh_from_mask(mask, options)
+            resolved, preview_svg, preview_info = _build_preview_artifacts(upload_path, options)
+            mesh = build_stamp_mesh_from_geometry(resolved.geometry, options, prepared=True)
             stl_bytes = mesh.export(file_type="stl")
         except (FileNotFoundError, OSError, ValueError) as exc:
             return _render_page(

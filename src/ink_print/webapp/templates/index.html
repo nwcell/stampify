@@ -221,7 +221,6 @@
         display: grid;
         gap: 1rem;
       }
-      .settings-grid--trace,
       .settings-grid--build {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -279,9 +278,6 @@
       }
 
       @media (min-width: 768px) {
-        .settings-grid--trace {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
         .settings-grid--build {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
@@ -489,7 +485,7 @@
                           <div>
                             <div class="mb-2"><i class="ti ti-vector-triangle"></i></div>
                             <div class="fw-semibold">No trace yet</div>
-                            <div class="text-secondary small">Upload an image and click Prepare to trace it here.</div>
+                            <div class="text-secondary small">Upload an image and click Prepare to preview the resolved geometry here.</div>
                           </div>
                         </div>
                         {% endif %}
@@ -501,36 +497,11 @@
                       <section class="settings-section">
                         <div class="settings-section-header">
                           <div>
-                            <h4 class="h5 mb-1">Trace cleanup</h4>
+                            <h4 class="h5 mb-1">Artwork preview</h4>
+                            <p>Tracing is automatic. Prepare to review the resolved geometry before generating STL.</p>
                           </div>
                         </div>
-                        <div class="settings-grid settings-grid--trace">
-                          <div class="settings-field">
-                            <label class="form-label d-flex align-items-center gap-2" for="threshold-input">
-                              Threshold
-                            </label>
-                            <input class="form-control form-control-sm" id="threshold-input" type="number" name="threshold" value="{{ defaults.threshold }}" step="1" min="0" max="255" required />
-                            <span class="form-hint">Lower keeps more detail.</span>
-                          </div>
-                          <div class="settings-field">
-                            <label class="form-label d-flex align-items-center gap-2" for="resolution-input">
-                              Resolution
-                            </label>
-                            <div class="input-group input-group-sm">
-                              <input class="form-control" id="resolution-input" type="number" name="resolution" value="{{ defaults.resolution }}" step="1" min="0" required />
-                              <span class="input-group-text">px</span>
-                            </div>
-                            <span class="form-hint">0 keeps the original size.</span>
-                          </div>
-                          <div class="settings-field">
-                            <label class="form-label d-flex align-items-center gap-2" for="simplify-input">
-                              Smooth
-                            </label>
-                            <input class="form-control form-control-sm" id="simplify-input" type="number" name="simplify" value="{{ defaults.simplify }}" step="0.01" min="0" required />
-                            <span class="form-hint">Higher smooths the trace.</span>
-                          </div>
-                        </div>
-                        <div class="settings-section-cta mt-4">
+                        <div class="settings-section-cta">
                           <button type="submit" class="btn btn-primary btn-lg" data-submit-stage="preview">
                             <i class="ti ti-magic-wand me-1"></i>
                             Prepare

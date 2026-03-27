@@ -58,7 +58,7 @@ The dev server reloads automatically when you edit files.
 The web app guides you through:
 
 - Upload artwork.
-- Prepare the SVG/vector output on the same page.
+- Prepare the auto-resolved vector output on the same page.
 - Generate the 3D STL.
 - Inspect the result in an interactive 3D viewer, then download it.
 - SVG artwork is supported alongside raster images.
@@ -70,7 +70,7 @@ Use it from Python:
 ```python
 from ink_print import StampOptions, write_stamp
 
-options = StampOptions(size=80, border=0.5, relief=1.0, simplify=0.05)
+options = StampOptions(size=80, border=0.5, relief=1.0)
 output_path, mesh = write_stamp("path/to/image.png", options=options)
 print(output_path, mesh.extents)
 ```
@@ -99,8 +99,9 @@ uv add git+https://github.com/nwcell/stampify
 
 - The repo includes `sample/xmas-cowboy.jpeg` as a sample input.
 - The core now uses a single vector mesh pipeline.
-- `--resolution 0` keeps the source image resolution.
-- `--simplify` and `--min-area` are the main cleanup controls for traced artwork.
+- Trace threshold, raster resolution, and simplify are auto-tuned from the upload by default.
+- Override `--threshold`, `--resolution`, and `--simplify` only when you need manual control.
+- `--min-area` is still the main cleanup control for traced artwork.
 - The default stamp mirrors the artwork so the printed impression reads correctly.
 - The border is raised by default. Disable it with `--no-raised-border`.
 - The default border is `0.5 mm` and the default relief is `1 mm`.

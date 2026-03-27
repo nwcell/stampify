@@ -19,9 +19,6 @@ def _preview_payload() -> dict[str, object]:
         "border": "0.5",
         "base": "4",
         "relief": "1",
-        "threshold": "190",
-        "resolution": "0",
-        "simplify": "0.08",
         "raised_border": "on",
         "invert": "",
     }
@@ -42,8 +39,10 @@ def test_webapp_preview_and_generate_are_stateless() -> None:
     assert str(app.url_path_for("sample_artwork")) not in root.text
     assert 'data-start-over-button="true"' in root.text
     assert "HX-Push-Url" not in root.headers
-    assert f'value="{CLI_DEFAULT_OPTIONS.threshold}"' in root.text
-    assert f'value="{CLI_DEFAULT_OPTIONS.resolution}"' in root.text
+    assert 'name="threshold"' not in root.text
+    assert 'name="resolution"' not in root.text
+    assert 'name="simplify"' not in root.text
+    assert "Tracing is automatic." in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.border}"' in root.text
     assert f'value="{CLI_DEFAULT_OPTIONS.relief}"' in root.text
     assert 'data:image/jpeg;base64,' in root.text
@@ -63,6 +62,7 @@ def test_webapp_preview_and_generate_are_stateless() -> None:
     assert 'data-submit-stage="preview"' in preview.text
     assert 'data-submit-stage="result"' in preview.text
     assert "No trace yet" not in preview.text
+    assert 'stroke-width="0.8"' not in preview.text
     assert "HX-Push-Url" not in preview.headers
     assert 'title="Prepare first"' not in preview.text
 
@@ -94,9 +94,6 @@ def test_webapp_preview_error_preserves_upload_thumbnail() -> None:
                 "border": "0.5",
                 "base": "4",
                 "relief": "1",
-                "threshold": "190",
-                "resolution": "0",
-                "simplify": "0.08",
                 "raised_border": "on",
                 "invert": "",
             },

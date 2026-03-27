@@ -3,13 +3,27 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+from PIL import Image, ImageDraw
+from shapely.geometry import Polygon
 
-from ink_print import StampOptions, build_stamp_mesh, default_output_path, load_mask, write_stamp
+from ink_print import (
+    StampOptions,
+    build_stamp_mesh,
+    build_stamp_svg,
+    default_output_path,
+    load_mask,
+    write_stamp,
+)
+import ink_print.core as core
 from ink_print.core import (
+    _geometry_vertex_count,
     _matrix_scale,
     _parse_svg_path,
     _rasterize_svg,
     _sample_svg_ellipse,
+    build_stamp_mesh_from_geometry,
+    prepare_stamp_geometry,
+    resolve_artwork,
     trace_geometry,
     validate_size,
 )
@@ -48,6 +62,13 @@ def test_build_stamp_mesh_uses_legacy_size_fallback() -> None:
     assert round(float(max(mesh.extents)), 1) == 90.0
 
 
+def test_build_stamp_svg_returns_browser_ready_markup() -> None:
+    svg = build_stamp_svg(SAMPLE, StampOptions())
+
+    assert svg.startswith("<svg")
+    assert "shape-rendering=\"geometricPrecision\"" in svg
+
+
 def test_validate_size_uses_the_larger_inner_dimension() -> None:
     assert validate_size(StampOptions(width=90.0, height=70.0, border=2.0)) == 86.0
 
@@ -63,6 +84,156 @@ def test_validate_size_uses_legacy_size_fallback() -> None:
 def test_write_stamp_writes_expected_file(tmp_path: Path) -> None:
     output_path, mesh = write_stamp(SAMPLE, tmp_path / "stamp.stl", StampOptions(resolution=300))
     assert output_path.exists()
+    assert mesh.is_watertight
+
+
+def test_load_mask_auto_tunes_raster_threshold_and_resolution(tmp_path: Path) -> None:
+    image = Image.new("L", (12, 12), 245)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((3, 3, 8, 8), fill=60)
+    image_path = tmp_path / "auto-raster.png"
+    image.save(image_path)
+
+    mask = load_mask(image_path, StampOptions())
+
+    assert mask.shape[0] > 100
+    assert mask.shape[1] > 100
+    assert mask[mask.shape[0] // 2, mask.shape[1] // 2]
+    assert not mask[0, 0]
+
+
+def test_resolve_artwork_auto_smooths_raster_jpeg() -> None:
+    resolved = resolve_artwork(SAMPLE, StampOptions())
+
+    assert resolved.source_kind == "raster"
+    assert resolved.profile.simplify >= 0.03
+    assert _geometry_vertex_count(resolved.geometry) < 16000
+    assert resolved.preview_svg.startswith("<svg")
+
+
+def test_resolve_artwork_uses_vtracer_for_raster_input(tmp_path: Path, monkeypatch) -> None:
+    raster_path = tmp_path / "raster.png"
+    image = Image.new("L", (24, 24), 255)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((6, 6, 18, 18), fill=0)
+    image.save(raster_path)
+
+    calls: list[tuple[str | None, dict[str, object]]] = []
+
+    class FakeVTracer:
+        def convert_raw_image_to_svg(self, img_bytes, img_format=None, **kwargs):
+            calls.append((img_format, kwargs))
+            return (
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+                '<path fill="black" d="M 1 1 H 3 V 4 H 2 V 3 H 1 Z" />'
+                "</svg>"
+            )
+
+    def fail_trace_geometry(mask) -> object:
+        raise AssertionError("contour tracing should not run when vtracer is available")
+
+    monkeypatch.setattr(core, "vtracer", FakeVTracer())
+    monkeypatch.setattr(core, "trace_geometry", fail_trace_geometry)
+
+    resolved = resolve_artwork(raster_path, StampOptions())
+    geometry_mirror, _ = core._vectorize_raster_artwork(raster_path, StampOptions())
+    geometry_no_mirror, _ = core._vectorize_raster_artwork(raster_path, StampOptions(mirror=False))
+
+    assert resolved.source_kind == "raster"
+    assert calls and calls[0][0] == "png"
+    assert resolved.geometry.area > 0
+    assert geometry_mirror.centroid.x > geometry_no_mirror.centroid.x
+    assert resolved.preview_svg.startswith("<svg")
+
+
+def test_prepare_stamp_geometry_auto_simplifies_complex_geometry() -> None:
+    coords: list[tuple[float, float]] = []
+    coords.extend((float(x), 0.0) for x in np.linspace(0.0, 100.0, 80, endpoint=False))
+    coords.extend((100.0, float(y)) for y in np.linspace(0.0, 100.0, 80, endpoint=False))
+    coords.extend((float(x), 100.0) for x in np.linspace(100.0, 0.0, 80, endpoint=False))
+    coords.extend((0.0, float(y)) for y in np.linspace(100.0, 0.0, 80, endpoint=False))
+    geometry = Polygon(coords)
+
+    prepared = prepare_stamp_geometry(geometry, StampOptions(width=90.0, height=70.0))
+
+    assert _geometry_vertex_count(prepared) < _geometry_vertex_count(geometry)
+
+
+def test_resolve_artwork_uses_direct_svg_geometry(tmp_path: Path, monkeypatch) -> None:
+    svg_path = tmp_path / "direct-geometry.svg"
+    svg_path.write_text(
+        """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <g transform="translate(4 6) scale(1.1)">
+            <path fill="black" fill-rule="evenodd" d="M 20 20 C 35 5 65 5 80 20 A 30 30 0 0 1 80 80 C 65 95 35 95 20 80 A 30 30 0 0 1 20 20 M 40 40 H 60 V 60 H 40 Z" />
+          </g>
+        </svg>
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    def fail_rasterize(*args, **kwargs) -> Image.Image:
+        raise AssertionError("direct SVG geometry should not rasterize supported artwork")
+
+    monkeypatch.setattr(core, "_rasterize_svg", fail_rasterize)
+
+    resolved = resolve_artwork(svg_path, StampOptions(width=90.0, height=70.0))
+
+    assert resolved.source_kind == "svg"
+    assert resolved.profile.simplify == 0.0
+    assert resolved.geometry.area > 0
+    assert resolved.preview_svg.startswith("<svg")
+
+    mesh = build_stamp_mesh_from_geometry(resolved.geometry, StampOptions(width=90.0, height=70.0), prepared=True)
+    assert mesh.is_watertight
+
+
+def test_build_stamp_mesh_falls_back_for_unsupported_svg(tmp_path: Path, monkeypatch) -> None:
+    svg_path = tmp_path / "fallback.svg"
+    svg_path.write_text(
+        """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <text x="10" y="30">fallback</text>
+        </svg>
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    calls: list[Path] = []
+    vector_calls: list[tuple[str | None, dict[str, object]]] = []
+
+    def fake_rasterize(image_path: Path, minimum_side: int = 1) -> Image.Image:
+        calls.append(image_path)
+        image = Image.new("L", (48, 48), 255)
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((12, 12, 36, 36), fill=0)
+        return image
+
+    class FakeVTracer:
+        def convert_raw_image_to_svg(self, img_bytes, img_format=None, **kwargs):
+            vector_calls.append((img_format, kwargs))
+            return (
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+                '<path fill="black" d="M 1 1 H 9 V 9 H 1 Z" />'
+                "</svg>"
+            )
+
+    def fail_trace_geometry(mask) -> object:
+        raise AssertionError("fallback contour tracing should not run when vtracer is available")
+
+    monkeypatch.setattr(core, "_rasterize_svg", fake_rasterize)
+    monkeypatch.setattr(core, "vtracer", FakeVTracer())
+    monkeypatch.setattr(core, "trace_geometry", fail_trace_geometry)
+
+    resolved = resolve_artwork(svg_path, StampOptions(width=90.0, height=70.0))
+    assert resolved.source_kind == "svg"
+    assert resolved.profile.simplify >= 0.03
+    assert vector_calls and vector_calls[0][0] == "png"
+
+    calls.clear()
+    mesh = build_stamp_mesh(svg_path, StampOptions(width=90.0, height=70.0))
+
+    assert calls == [svg_path]
     assert mesh.is_watertight
 
 

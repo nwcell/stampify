@@ -5,9 +5,14 @@ from importlib import import_module
 __all__ = [
     "StampOptions",
     "build_stamp_mesh",
+    "build_stamp_mesh_from_geometry",
     "build_stamp_mesh_from_mask",
+    "build_stamp_svg",
     "default_output_path",
     "load_mask",
+    "prepare_stamp_geometry",
+    "resolve_artwork",
+    "resolve_trace_profile",
     "write_stamp",
 ]
 

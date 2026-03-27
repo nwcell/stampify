@@ -37,7 +37,10 @@ DEFAULT_OPTIONS = StampOptions(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Turn a black-and-white image into an STL stamp plate.",
+        description=(
+            "Turn artwork into an STL stamp plate. Trace threshold, raster resolution, and cleanup "
+            "defaults are auto-tuned from the upload unless you override them."
+        ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("image", type=Path)
@@ -48,10 +51,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--border", type=float, default=DEFAULT_BORDER, help="Target border width around the artwork, in mm.")
     parser.add_argument("--base", type=float, default=DEFAULT_BASE, help="Backing thickness under the raised artwork, in mm.")
     parser.add_argument("--relief", type=float, default=DEFAULT_RELIEF, help="Raised height of the inked areas, in mm.")
-    parser.add_argument("--simplify", type=float, default=DEFAULT_SIMPLIFY, help="Path simplification tolerance in mm.")
+    parser.add_argument(
+        "--simplify",
+        type=float,
+        default=DEFAULT_SIMPLIFY,
+        help="Path simplification tolerance in mm. Leave at the default to auto-tune from the traced geometry.",
+    )
     parser.add_argument("--min-area", type=float, default=DEFAULT_MIN_AREA, help="Discard traced islands smaller than this area, in mm^2.")
-    parser.add_argument("--threshold", type=int, default=DEFAULT_THRESHOLD, help="Pixels darker than this become stamp features.")
-    parser.add_argument("--resolution", type=int, default=DEFAULT_RESOLUTION, help="Longest-side raster resolution for tracing. Use 0 to keep the source resolution.")
+    parser.add_argument(
+        "--threshold",
+        type=int,
+        default=DEFAULT_THRESHOLD,
+        help="Grayscale cutoff for raster artwork. Leave at the default to auto-pick a threshold from the image.",
+    )
+    parser.add_argument(
+        "--resolution",
+        type=int,
+        default=DEFAULT_RESOLUTION,
+        help="Longest-side raster resolution for tracing. Leave at the default to auto-pick a size from the artwork.",
+    )
     parser.add_argument(
         "--raised-border",
         action=argparse.BooleanOptionalAction,

@@ -167,6 +167,11 @@
         min-height: 15rem;
         padding: .75rem;
       }
+      .svg-preview-frame img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
       .svg-preview-frame svg {
         width: 100%;
         height: auto;
@@ -436,7 +441,7 @@
 
               <div class="card mb-3">
                 <div class="card-body">
-                  {% set preview_ready = session is not none and session.preview_svg %}
+                  {% set preview_ready = session is not none and session.preview_url %}
                   <form method="post" action="/preview" enctype="multipart/form-data" hx-post="/preview" hx-target="#workflow" hx-swap="outerHTML" hx-select="#workflow" hx-indicator="#loading-overlay" hx-validate="true" hx-encoding="multipart/form-data" id="preview-form">
                     <div class="row g-4 align-items-stretch">
                       <div class="col-12 col-md-6 d-flex flex-column justify-content-center">
@@ -471,24 +476,32 @@
                           <span class="badge bg-secondary-lt">Waiting</span>
                           {% endif %}
                         </div>
-                        {% if preview_ready %}
-                        <div class="svg-preview-frame">
-                          <div>{{ session.preview_svg | safe }}</div>
-                        </div>
-                        <div class="d-flex flex-wrap gap-2 mt-3">
-                          <span class="badge">{{ session.preview_info.contours }} contours</span>
-                          <span class="badge">{{ session.preview_info.area }}</span>
-                          <span class="badge">{{ session.preview_info.dimensions }}</span>
-                        </div>
-                        {% else %}
-                        <div class="preview-empty-state">
-                          <div>
-                            <div class="mb-2"><i class="ti ti-vector-triangle"></i></div>
-                            <div class="fw-semibold">No trace yet</div>
-                            <div class="text-secondary small">Upload an image and click Prepare to preview the resolved geometry here.</div>
+                        <div
+                          id="preview-output"
+                          data-preview-url="{{ session.preview_url if session is not none and session.preview_url is not none else '' }}"
+                          data-preview-contours="{{ session.preview_info.get('contours', '') if session is not none and session.preview_info else '' }}"
+                          data-preview-area="{{ session.preview_info.get('area', '') if session is not none and session.preview_info else '' }}"
+                          data-preview-dimensions="{{ session.preview_info.get('dimensions', '') if session is not none and session.preview_info else '' }}"
+                        >
+                          {% if preview_ready %}
+                          <div class="svg-preview-frame">
+                            <img src="{{ session.preview_url }}" alt="Vector output preview" loading="lazy" decoding="async" />
                           </div>
+                          <div class="d-flex flex-wrap gap-2 mt-3">
+                            <span class="badge">{{ session.preview_info.get('contours', '') }} contours</span>
+                            <span class="badge">{{ session.preview_info.get('area', '') }}</span>
+                            <span class="badge">{{ session.preview_info.get('dimensions', '') }}</span>
+                          </div>
+                          {% else %}
+                          <div class="preview-empty-state">
+                            <div>
+                              <div class="mb-2"><i class="ti ti-vector-triangle"></i></div>
+                              <div class="fw-semibold">No trace yet</div>
+                              <div class="text-secondary small">Upload an image and click Prepare to preview the resolved geometry here.</div>
+                            </div>
+                          </div>
+                          {% endif %}
                         </div>
-                        {% endif %}
                       </div>
                     </div>
 
@@ -625,24 +638,32 @@
                 </div>
               </div>
 
-              {% if session is not none and session.result_data_url is not none %}
-              <div class="card stl-result-card" id="generated-stl" {% if auto_scroll_result %}data-auto-scroll-result="true"{% endif %}>
-                <div class="card-body">
-                  <div class="viewer-container mb-3" data-mesh-url="{{ session.result_data_url }}"></div>
-                  <div class="d-flex flex-wrap gap-3 align-items-center mb-3 text-secondary">
-                    <span><i class="ti ti-file me-1"></i>{{ session.result_name if session.result_name else session.artwork_name ~ '-stamp.stl' }}</span>
-                    <span><i class="ti ti-dimensions me-1"></i>{{ session.result_info.dimensions }}</span>
-                    <span><i class="ti ti-database me-1"></i>{{ session.result_info.size }}</span>
-                  </div>
-                  <div class="action-buttons d-flex flex-wrap gap-2">
-                    <a class="btn btn-primary" href="{{ session.result_data_url }}" download="{{ session.result_name if session.result_name else session.artwork_name ~ '-stamp.stl' }}">
-                      <i class="ti ti-download me-1"></i>
-                      Download STL
-                    </a>
+              <div
+                id="generated-stl-slot"
+                data-result-url="{{ session.result_url if session is not none and session.result_url is not none else '' }}"
+                data-result-name="{{ session.result_name if session is not none and session.result_name is not none else '' }}"
+                data-result-dimensions="{{ session.result_info.get('dimensions', '') if session is not none and session.result_info is not none else '' }}"
+                data-result-size="{{ session.result_info.get('size', '') if session is not none and session.result_info is not none else '' }}"
+              >
+                {% if session is not none and session.result_url is not none %}
+                <div class="card stl-result-card" id="generated-stl" {% if auto_scroll_result %}data-auto-scroll-result="true"{% endif %}>
+                  <div class="card-body">
+                    <div class="viewer-container mb-3" data-mesh-url="{{ session.result_url }}"></div>
+                    <div class="d-flex flex-wrap gap-3 align-items-center mb-3 text-secondary">
+                      <span><i class="ti ti-file me-1"></i>{{ session.result_name if session.result_name else session.artwork_name ~ '-stamp.stl' }}</span>
+                      <span><i class="ti ti-dimensions me-1"></i>{{ session.result_info.get('dimensions', '') if session.result_info is not none else '' }}</span>
+                      <span><i class="ti ti-database me-1"></i>{{ session.result_info.get('size', '') if session.result_info is not none else '' }}</span>
+                    </div>
+                    <div class="action-buttons d-flex flex-wrap gap-2">
+                      <a class="btn btn-primary" href="{{ session.result_url }}" download="{{ session.result_name if session.result_name else session.artwork_name ~ '-stamp.stl' }}">
+                        <i class="ti ti-download me-1"></i>
+                        Download STL
+                      </a>
+                    </div>
                   </div>
                 </div>
+                {% endif %}
               </div>
-              {% endif %}
 
             </div>
           </div>
@@ -668,7 +689,16 @@
       import { STLLoader } from 'three/addons/loaders/STLLoader.js';
       import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-      const DRAFT_STORAGE_KEY = 'stampify:draft:v1';
+      const DRAFT_STORAGE_KEY = 'stampify:draft:v2';
+      const PREVIEW_EMPTY_STATE_HTML = `
+        <div class="preview-empty-state">
+          <div>
+            <div class="mb-2"><i class="ti ti-vector-triangle"></i></div>
+            <div class="fw-semibold">No trace yet</div>
+            <div class="text-secondary small">Upload an image and click Prepare to preview the resolved geometry here.</div>
+          </div>
+        </div>
+      `;
 
       function safeReadStorage(key) {
         try {
@@ -707,7 +737,25 @@
                 lastModified: Number(draft.artwork.lastModified || Date.now()),
               }
             : null;
-        return { stage, form, artwork };
+        const preview =
+          draft && typeof draft.preview === 'object' && draft.preview !== null && typeof draft.preview.url === 'string'
+            ? {
+                url: String(draft.preview.url),
+                contours: String(draft.preview.contours || ''),
+                area: String(draft.preview.area || ''),
+                dimensions: String(draft.preview.dimensions || ''),
+              }
+            : null;
+        const result =
+          draft && typeof draft.result === 'object' && draft.result !== null && typeof draft.result.url === 'string'
+            ? {
+                url: String(draft.result.url),
+                name: String(draft.result.name || ''),
+                dimensions: String(draft.result.dimensions || ''),
+                size: String(draft.result.size || ''),
+              }
+            : null;
+        return { stage, form, artwork, preview, result };
       }
 
       function readDraft() {
@@ -782,6 +830,39 @@
         });
       }
 
+      function dataUrlToFile(dataUrl, fileName, fileType, lastModified) {
+        if (!dataUrl.startsWith('data:')) {
+          throw new Error('Expected a data URL.');
+        }
+
+        const commaIndex = dataUrl.indexOf(',');
+        if (commaIndex < 0) {
+          throw new Error('Malformed data URL.');
+        }
+
+        const header = dataUrl.slice(5, commaIndex);
+        const payload = dataUrl.slice(commaIndex + 1);
+        const headerParts = header.split(';').filter(Boolean);
+        const isBase64 = headerParts.includes('base64');
+        const mimeType = fileType || headerParts.find((part) => part !== 'base64') || 'application/octet-stream';
+
+        let bytes;
+        if (isBase64) {
+          const binary = atob(payload);
+          bytes = new Uint8Array(binary.length);
+          for (let index = 0; index < binary.length; index += 1) {
+            bytes[index] = binary.charCodeAt(index);
+          }
+        } else {
+          bytes = new TextEncoder().encode(decodeURIComponent(payload));
+        }
+
+        return new File([bytes], fileName || 'upload.png', {
+          type: mimeType,
+          lastModified: lastModified || Date.now(),
+        });
+      }
+
       async function restoreArtworkInput(input, artwork) {
         if (!artwork?.dataUrl) return false;
 
@@ -791,12 +872,12 @@
         }
 
         try {
-          const response = await fetch(artwork.dataUrl);
-          const blob = await response.blob();
-          const file = new File([blob], artwork.name || 'upload.png', {
-            type: artwork.type || blob.type || 'application/octet-stream',
-            lastModified: artwork.lastModified || Date.now(),
-          });
+          const file = dataUrlToFile(
+            artwork.dataUrl,
+            artwork.name || 'upload.png',
+            artwork.type || 'application/octet-stream',
+            artwork.lastModified || Date.now(),
+          );
           const transfer = new DataTransfer();
           transfer.items.add(file);
           input.files = transfer.files;
@@ -809,15 +890,33 @@
       function mergeDraft(form, patch = {}) {
         const current = readDraft();
         const next = {
-          stage: patch.stage ?? current.stage,
+          ...current,
           form: patch.form ?? collectFormValues(form),
-          artwork: patch.artwork === undefined ? current.artwork : patch.artwork,
         };
+
+        if ('stage' in patch) {
+          next.stage = patch.stage;
+        }
+        if ('artwork' in patch) {
+          next.artwork = patch.artwork;
+        }
+        if ('preview' in patch) {
+          next.preview = patch.preview;
+        }
+        if ('result' in patch) {
+          next.result = patch.result;
+        }
+
         return writeDraft(next);
       }
 
-      function saveFormStage(form, stage) {
-        return mergeDraft(form, { stage, form: collectFormValues(form) });
+      function saveFormStage(form, stage, clearArtifacts = false) {
+        const patch = { stage, form: collectFormValues(form) };
+        if (clearArtifacts) {
+          patch.preview = null;
+          patch.result = null;
+        }
+        return mergeDraft(form, patch);
       }
 
       async function saveArtworkFromFile(form, file) {
@@ -841,14 +940,190 @@
           lastModified: file.lastModified || Date.now(),
         };
         return writeDraft({
-          stage: current.stage,
+          stage: 'idle',
           form: current.form,
           artwork,
+          preview: null,
+          result: null,
         });
       }
 
       function clearDraft() {
         safeRemoveStorage(DRAFT_STORAGE_KEY);
+      }
+
+      function createBadge(text) {
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = text;
+        return badge;
+      }
+
+      function createPreviewEmptyState() {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = PREVIEW_EMPTY_STATE_HTML.trim();
+        return wrapper.firstElementChild;
+      }
+
+      function createPreviewState(preview) {
+        const fragment = document.createDocumentFragment();
+        const frame = document.createElement('div');
+        frame.className = 'svg-preview-frame';
+
+        const image = document.createElement('img');
+        image.src = preview.url;
+        image.alt = 'Vector output preview';
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        frame.appendChild(image);
+
+        const badges = document.createElement('div');
+        badges.className = 'd-flex flex-wrap gap-2 mt-3';
+        badges.appendChild(createBadge(`${preview.contours} contours`));
+        badges.appendChild(createBadge(preview.area));
+        badges.appendChild(createBadge(preview.dimensions));
+
+        fragment.appendChild(frame);
+        fragment.appendChild(badges);
+        return fragment;
+      }
+
+      function createResultCard(result, autoScroll = false) {
+        const card = document.createElement('div');
+        card.className = 'card stl-result-card';
+        card.id = 'generated-stl';
+        if (autoScroll) {
+          card.dataset.autoScrollResult = 'true';
+        }
+
+        const body = document.createElement('div');
+        body.className = 'card-body';
+
+        const viewer = document.createElement('div');
+        viewer.className = 'viewer-container mb-3';
+        viewer.dataset.meshUrl = result.url;
+
+        const infoRow = document.createElement('div');
+        infoRow.className = 'd-flex flex-wrap gap-3 align-items-center mb-3 text-secondary';
+
+        const fileInfo = document.createElement('span');
+        fileInfo.innerHTML = '<i class="ti ti-file me-1"></i>';
+        fileInfo.append(document.createTextNode(result.name));
+
+        const dimensionsInfo = document.createElement('span');
+        dimensionsInfo.innerHTML = '<i class="ti ti-dimensions me-1"></i>';
+        dimensionsInfo.append(document.createTextNode(result.dimensions));
+
+        const sizeInfo = document.createElement('span');
+        sizeInfo.innerHTML = '<i class="ti ti-database me-1"></i>';
+        sizeInfo.append(document.createTextNode(result.size));
+
+        infoRow.append(fileInfo, dimensionsInfo, sizeInfo);
+
+        const actions = document.createElement('div');
+        actions.className = 'action-buttons d-flex flex-wrap gap-2';
+
+        const download = document.createElement('a');
+        download.className = 'btn btn-primary';
+        download.href = result.url;
+        download.download = result.name;
+        download.innerHTML = '<i class="ti ti-download me-1"></i>Download STL';
+        actions.appendChild(download);
+
+        body.append(viewer, infoRow, actions);
+        card.appendChild(body);
+        return card;
+      }
+
+      function capturePreviewState(workflowRoot) {
+        const previewOutput = workflowRoot.querySelector('#preview-output');
+        if (!(previewOutput instanceof HTMLElement)) return null;
+
+        const url = previewOutput.dataset.previewUrl || '';
+        if (!url) return null;
+
+        return {
+          url,
+          contours: previewOutput.dataset.previewContours || '',
+          area: previewOutput.dataset.previewArea || '',
+          dimensions: previewOutput.dataset.previewDimensions || '',
+        };
+      }
+
+      function captureResultState(workflowRoot) {
+        const resultSlot = workflowRoot.querySelector('#generated-stl-slot');
+        if (!(resultSlot instanceof HTMLElement)) return null;
+
+        const url = resultSlot.dataset.resultUrl || '';
+        if (!url) return null;
+
+        return {
+          url,
+          name: resultSlot.dataset.resultName || '',
+          dimensions: resultSlot.dataset.resultDimensions || '',
+          size: resultSlot.dataset.resultSize || '',
+        };
+      }
+
+      function renderPreviewOutput(workflowRoot, preview) {
+        const previewOutput = workflowRoot.querySelector('#preview-output');
+        if (!(previewOutput instanceof HTMLElement)) return null;
+
+        previewOutput.dataset.previewUrl = preview?.url || '';
+        previewOutput.dataset.previewContours = preview?.contours || '';
+        previewOutput.dataset.previewArea = preview?.area || '';
+        previewOutput.dataset.previewDimensions = preview?.dimensions || '';
+        previewOutput.replaceChildren();
+        previewOutput.appendChild(preview ? createPreviewState(preview) : createPreviewEmptyState());
+        return previewOutput;
+      }
+
+      function renderResultSlot(workflowRoot, result, autoScroll = false) {
+        const resultSlot = workflowRoot.querySelector('#generated-stl-slot');
+        if (!(resultSlot instanceof HTMLElement)) return null;
+
+        resultSlot.dataset.resultUrl = result?.url || '';
+        resultSlot.dataset.resultName = result?.name || '';
+        resultSlot.dataset.resultDimensions = result?.dimensions || '';
+        resultSlot.dataset.resultSize = result?.size || '';
+        resultSlot.replaceChildren();
+        if (result) {
+          resultSlot.appendChild(createResultCard(result, autoScroll));
+        }
+        return resultSlot;
+      }
+
+      function persistRenderedState(workflowRoot) {
+        const renderStage = workflowRoot.dataset.renderStage || 'idle';
+        if (renderStage !== 'preview' && renderStage !== 'result') {
+          return;
+        }
+
+        const form = workflowRoot.querySelector('#preview-form');
+        if (!(form instanceof HTMLFormElement)) return;
+
+        const current = readDraft();
+        const preview = capturePreviewState(workflowRoot) || current.preview;
+        const result = renderStage === 'result' ? (captureResultState(workflowRoot) || current.result) : null;
+
+        mergeDraft(form, {
+          stage: renderStage,
+          preview,
+          result,
+        });
+      }
+
+      function restoreRenderedState(workflowRoot, draft) {
+        if ((workflowRoot.dataset.renderStage || 'idle') !== 'idle') {
+          return;
+        }
+
+        const hasPreview = draft.stage !== 'idle' && draft.preview && draft.preview.url;
+        const hasResult = draft.stage === 'result' && draft.result && draft.result.url;
+
+        renderPreviewOutput(workflowRoot, hasPreview ? draft.preview : null);
+        renderResultSlot(workflowRoot, hasResult ? draft.result : null, hasResult);
+        workflowRoot.dataset.renderStage = hasResult ? 'result' : hasPreview ? 'preview' : 'idle';
       }
 
       function updateGenerateButtonState(workflow = document) {
@@ -860,8 +1135,11 @@
         if (!(button instanceof HTMLButtonElement)) return;
 
         const draft = readDraft();
+        const artworkInput = workflowRoot?.querySelector('input[type="file"][name="artwork"]');
         const hasPreview = Boolean(workflowRoot?.querySelector('.svg-preview-frame')) || Boolean(workflowRoot?.querySelector('#generated-stl'));
-        const ready = hasPreview && draft.stage !== 'idle' && Boolean(draft.artwork?.dataUrl);
+        const hasArtworkFile = Boolean(artworkInput instanceof HTMLInputElement && artworkInput.files && artworkInput.files[0]);
+        const renderStage = workflowRoot?.dataset.renderStage || draft.stage;
+        const ready = hasPreview && renderStage !== 'idle' && Boolean(draft.artwork?.dataUrl) && hasArtworkFile;
 
         button.disabled = !ready;
         if (ready) {
@@ -1051,12 +1329,12 @@
           if (file) {
             fallbackUrl = '';
             fallbackName = '';
-            saveFormStage(form, 'idle');
+            saveFormStage(form, 'idle', true);
             void saveArtworkFromFile(form, file);
           } else {
             fallbackUrl = '';
             fallbackName = '';
-            mergeDraft(form, { stage: 'idle', artwork: null });
+            mergeDraft(form, { stage: 'idle', artwork: null, preview: null, result: null });
           }
 
           showPreview();
@@ -1070,7 +1348,7 @@
             input.value = '';
             fallbackUrl = '';
             fallbackName = '';
-            mergeDraft(form, { stage: 'idle', artwork: null });
+            mergeDraft(form, { stage: 'idle', artwork: null, preview: null, result: null });
             showPreview();
             updateGenerateButtonState(form);
           });
@@ -1154,8 +1432,17 @@
         const form = workflowRoot.querySelector('#preview-form');
         if (!(form instanceof HTMLFormElement)) return;
 
+        const renderStage = workflowRoot.dataset.renderStage || 'idle';
+        if (renderStage === 'preview' || renderStage === 'result') {
+          persistRenderedState(workflowRoot);
+        }
+
         const draft = readDraft();
         applyFormValues(form, draft.form);
+
+        if (renderStage === 'idle') {
+          restoreRenderedState(workflowRoot, draft);
+        }
 
         workflowRoot.querySelectorAll('[data-mesh-url]').forEach((container) => mountViewer(container));
         const restoreUpload = mountUploadZone(form, draft);
@@ -1163,25 +1450,12 @@
         scrollGeneratedStlCard(workflowRoot);
         updateGenerateButtonState(workflowRoot);
 
-        const renderStage = workflowRoot.dataset.renderStage || 'idle';
-        const shouldResume = renderStage === 'idle' && draft.stage !== 'idle' && Boolean(draft.artwork?.dataUrl);
         const restored = await restoreUpload.catch(() => false);
         if (!form.isConnected) return;
 
         updateGenerateButtonState(workflowRoot);
-        if (!shouldResume || !restored) return;
-
-        const nextDraft = readDraft();
-        if (nextDraft.stage !== 'preview' && nextDraft.stage !== 'result') return;
-
-        const submitter =
-          nextDraft.stage === 'result'
-            ? workflowRoot.querySelector('button[data-submit-stage="result"]')
-            : form.querySelector('button[data-submit-stage="preview"]');
-
-        if (submitter instanceof HTMLButtonElement) {
-          form.requestSubmit(submitter);
-        }
+        if (!restored) return;
+        scrollGeneratedStlCard(workflowRoot);
       }
 
       document.addEventListener('DOMContentLoaded', () => {
@@ -1208,7 +1482,7 @@
         if (!(form instanceof HTMLFormElement)) return;
         if (target instanceof HTMLInputElement && target.type === 'file') return;
 
-        saveFormStage(form, 'idle');
+        saveFormStage(form, 'idle', true);
         updateGenerateButtonState(form);
       });
 
@@ -1220,7 +1494,7 @@
         if (!(form instanceof HTMLFormElement)) return;
         if (target instanceof HTMLInputElement && target.type === 'file') return;
 
-        saveFormStage(form, 'idle');
+        saveFormStage(form, 'idle', true);
         updateGenerateButtonState(form);
       });
 

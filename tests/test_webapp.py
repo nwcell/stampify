@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -61,10 +62,11 @@ def test_webapp_preview_and_generate_are_stateless() -> None:
     assert "xmas-cowboy.jpeg" in preview.text
     assert 'data-submit-stage="preview"' in preview.text
     assert 'data-submit-stage="result"' in preview.text
-    assert "No trace yet" not in preview.text
     assert 'stroke-width="0.8"' not in preview.text
     assert "HX-Push-Url" not in preview.headers
     assert 'title="Prepare first"' not in preview.text
+    assert 'data-preview-url="/generated-assets/' in preview.text
+    assert 'src="/generated-assets/' in preview.text
 
     with SAMPLE.open("rb") as image:
         generated = client.post(
@@ -75,11 +77,25 @@ def test_webapp_preview_and_generate_are_stateless() -> None:
 
     assert generated.status_code == 200
     assert 'data-render-stage="result"' in generated.text
-    assert 'data-mesh-url="data:model/stl;base64,' in generated.text
+    assert 'data-mesh-url="/generated-assets/' in generated.text
     assert 'download="xmas-cowboy-stamp.stl"' in generated.text
     assert 'data-auto-scroll-result="true"' in generated.text
     assert "Download STL" in generated.text
     assert "HX-Push-Url" not in generated.headers
+
+    preview_url = re.search(r'data-preview-url="([^"]+)"', generated.text)
+    result_url = re.search(r'data-mesh-url="([^"]+)"', generated.text)
+    assert preview_url is not None
+    assert result_url is not None
+
+    preview_asset = client.get(preview_url.group(1))
+    result_asset = client.get(result_url.group(1))
+    assert preview_asset.status_code == 200
+    assert result_asset.status_code == 200
+    assert preview_asset.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert result_asset.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert preview_asset.headers["content-type"].startswith("image/svg+xml")
+    assert result_asset.headers["content-type"].startswith("model/stl")
 
 
 def test_webapp_preview_error_preserves_upload_thumbnail() -> None:
@@ -125,8 +141,8 @@ def test_webapp_accepts_svg_artwork() -> None:
     assert preview.status_code == 200
     assert 'data-render-stage="preview"' in preview.text
     assert 'data-artwork-url="data:image/svg+xml;base64,' in preview.text
+    assert 'data-preview-url="/generated-assets/' in preview.text
     assert "Generate STL" in preview.text
-    assert "No trace yet" not in preview.text
 
 
 def test_webapp_main_enables_reload_by_default(monkeypatch) -> None:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 from base64 import b64encode
 import mimetypes
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +27,9 @@ from ink_print.core import (
 APP_DIR = Path(__file__).resolve().parent
 REPO_DIR = APP_DIR.parent.parent.parent
 SAMPLE_ARTWORK_PATH = REPO_DIR / "sample" / "xmas-cowboy.jpeg"
+WEB_ASSET_DIR = Path(tempfile.gettempdir()) / "stampify-web-assets"
+WEB_ASSET_DIR.mkdir(parents=True, exist_ok=True)
+_WEB_ASSET_NAME_RE = re.compile(r"^[a-f0-9]{64}\.(?:svg|stl)$")
 TEMPLATES = Jinja2Templates(directory=str(APP_DIR / "templates"))
 app = FastAPI(
     title="Stampify Studio",
@@ -53,15 +58,21 @@ class WorkflowState:
     render_stage: Literal["idle", "preview", "result"]
     artwork_name: str
     artwork_data_url: str
-    preview_svg: str
     preview_info: dict[str, str]
+    preview_url: str | None = None
     result_name: str | None = None
-    result_data_url: str | None = None
+    result_url: str | None = None
     result_info: dict[str, str] | None = None
 
 
 def _guess_media_type(path: Path) -> str:
     return mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+
+
+def _asset_media_type(path: Path) -> str:
+    if path.suffix.lower() == ".stl":
+        return "model/stl"
+    return _guess_media_type(path)
 
 
 def _human_size(num_bytes: int) -> str:
@@ -88,6 +99,15 @@ def _parse_float(value: str | None, default: float) -> float:
 
 def _data_url(media_type: str, payload: bytes) -> str:
     return f"data:{media_type};base64,{b64encode(payload).decode('ascii')}"
+
+
+def _store_generated_asset(payload: bytes, suffix: str) -> str:
+    digest = hashlib.sha256(payload).hexdigest()
+    asset_name = f"{digest}{suffix}"
+    asset_path = WEB_ASSET_DIR / asset_name
+    if not asset_path.exists():
+        asset_path.write_bytes(payload)
+    return str(app.url_path_for("generated_asset", asset_name=asset_name))
 
 
 if SAMPLE_ARTWORK_PATH.exists():
@@ -163,7 +183,8 @@ def _build_preview_artifacts(image_path: Path, options: StampOptions) -> tuple[o
         "bounds": f"{resolved.geometry.bounds[2] - resolved.geometry.bounds[0]:.1f} mm × {resolved.geometry.bounds[3] - resolved.geometry.bounds[1]:.1f} mm",
         "dimensions": f"{preview_width:.1f} × {preview_height:.1f} mm",
     }
-    return resolved, resolved.preview_svg, preview_info
+    preview_url = _store_generated_asset(resolved.preview_svg.encode("utf-8"), ".svg")
+    return resolved, preview_url, preview_info
 
 
 def _render_page(
@@ -211,7 +232,23 @@ def sample_artwork() -> FileResponse:
     if not SAMPLE_ARTWORK_PATH.exists():
         raise HTTPException(status_code=404, detail="That sample artwork is no longer available.")
 
-    return FileResponse(SAMPLE_ARTWORK_PATH, media_type=_guess_media_type(SAMPLE_ARTWORK_PATH))
+    response = FileResponse(SAMPLE_ARTWORK_PATH, media_type=_guess_media_type(SAMPLE_ARTWORK_PATH))
+    response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
+
+
+@app.get("/generated-assets/{asset_name}", name="generated_asset")
+def generated_asset(asset_name: str) -> FileResponse:
+    if not _WEB_ASSET_NAME_RE.fullmatch(asset_name):
+        raise HTTPException(status_code=404, detail="That generated asset is no longer available.")
+
+    asset_path = WEB_ASSET_DIR / asset_name
+    if not asset_path.exists():
+        raise HTTPException(status_code=404, detail="That generated asset is no longer available.")
+
+    response = FileResponse(asset_path, media_type=_asset_media_type(asset_path))
+    response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
 
 
 @app.post("/preview", response_class=HTMLResponse)
@@ -255,7 +292,6 @@ async def preview(
                 render_stage="preview",
                 artwork_name=upload_name,
                 artwork_data_url=artwork_data_url,
-                preview_svg="",
                 preview_info={},
             ),
         )
@@ -269,7 +305,6 @@ async def preview(
                 render_stage="preview",
                 artwork_name=upload_name,
                 artwork_data_url=artwork_data_url,
-                preview_svg="",
                 preview_info={},
             ),
         )
@@ -278,7 +313,7 @@ async def preview(
         upload_path = Path(tmpdir) / upload_name
         upload_path.write_bytes(payload)
         try:
-            _resolved, preview_svg, preview_info = _build_preview_artifacts(upload_path, options)
+            _resolved, preview_url, preview_info = _build_preview_artifacts(upload_path, options)
         except (FileNotFoundError, OSError, ValueError) as exc:
             return _render_page(
                 request,
@@ -288,7 +323,6 @@ async def preview(
                     render_stage="preview",
                     artwork_name=upload_name,
                     artwork_data_url=artwork_data_url,
-                    preview_svg="",
                     preview_info={},
                 ),
             )
@@ -297,8 +331,8 @@ async def preview(
         render_stage="preview",
         artwork_name=upload_name,
         artwork_data_url=artwork_data_url,
-        preview_svg=preview_svg,
         preview_info=preview_info,
+        preview_url=preview_url,
     )
     return _render_page(request, session=session, defaults=form_values)
 
@@ -344,7 +378,6 @@ async def generate(
                 render_stage="preview",
                 artwork_name=upload_name,
                 artwork_data_url=artwork_data_url,
-                preview_svg="",
                 preview_info={},
             ),
         )
@@ -358,7 +391,6 @@ async def generate(
                 render_stage="preview",
                 artwork_name=upload_name,
                 artwork_data_url=artwork_data_url,
-                preview_svg="",
                 preview_info={},
             ),
         )
@@ -366,8 +398,10 @@ async def generate(
     with tempfile.TemporaryDirectory(prefix="stampify-web-") as tmpdir:
         upload_path = Path(tmpdir) / upload_name
         upload_path.write_bytes(payload)
+        preview_url: str | None = None
+        preview_info: dict[str, str] = {}
         try:
-            resolved, preview_svg, preview_info = _build_preview_artifacts(upload_path, options)
+            resolved, preview_url, preview_info = _build_preview_artifacts(upload_path, options)
             mesh = build_stamp_mesh_from_geometry(resolved.geometry, options, prepared=True)
             stl_bytes = mesh.export(file_type="stl")
         except (FileNotFoundError, OSError, ValueError) as exc:
@@ -379,8 +413,8 @@ async def generate(
                     render_stage="preview",
                     artwork_name=upload_name,
                     artwork_data_url=artwork_data_url,
-                    preview_svg=preview_svg if "preview_svg" in locals() else "",
                     preview_info=preview_info if "preview_info" in locals() else {},
+                    preview_url=preview_url if "preview_url" in locals() else None,
                 ),
             )
 
@@ -389,10 +423,10 @@ async def generate(
         render_stage="result",
         artwork_name=upload_name,
         artwork_data_url=artwork_data_url,
-        preview_svg=preview_svg,
         preview_info=preview_info,
+        preview_url=preview_url,
         result_name=result_name,
-        result_data_url=_data_url("model/stl", stl_bytes),
+        result_url=_store_generated_asset(stl_bytes, ".stl"),
         result_info={
             "dimensions": f"{mesh.extents[0]:.1f} × {mesh.extents[1]:.1f} × {mesh.extents[2]:.1f} mm",
             "size": _human_size(len(stl_bytes)),
